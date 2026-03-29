@@ -1,0 +1,66 @@
+"""Kuaishou (快手) uploader — Playwright-based video upload automation."""
+import asyncio
+from playwright.async_api import BrowserContext, TimeoutError as PwTimeout
+
+from .base import BaseUploader, UploadResult
+
+CREATOR_URL = "https://cp.kuaishou.com/article/publish/video"
+
+
+class KuaishouUploader(BaseUploader):
+
+    async def check_login(self) -> bool:
+        page = await self.context.new_page()
+        try:
+            await page.goto(CREATOR_URL, wait_until="domcontentloaded", timeout=15000)
+            await asyncio.sleep(2)
+            return "login" not in page.url.lower() and "passport" not in page.url.lower()
+        except Exception:
+            return False
+        finally:
+            await page.close()
+
+    async def upload(
+        self,
+        video_path: str,
+        title: str,
+        description: str,
+        tags: list[str] | None = None,
+        cover_path: str | None = None,
+    ) -> UploadResult:
+        page = await self.context.new_page()
+        try:
+            await page.goto(CREATOR_URL, wait_until="domcontentloaded", timeout=30000)
+            await asyncio.sleep(3)
+
+            if "login" in page.url.lower() or "passport" in page.url.lower():
+                return UploadResult(success=False, error_message="Not logged in")
+
+            file_input = page.locator('input[type="file"]')
+            await file_input.set_input_files(video_path)
+
+            await page.wait_for_selector('[class*="success"], [class*="uploaded"]', timeout=120000)
+
+            title_input = page.locator('[class*="title"] input').first
+            if await title_input.count() > 0:
+                await title_input.fill(title)
+
+            desc_area = page.locator('[class*="desc"] textarea').first
+            if await desc_area.count() > 0:
+                desc_text = description
+                if tags:
+                    desc_text += " " + " ".join(f"#{t}" for t in tags[:5])
+                await desc_area.fill(desc_text)
+
+            publish_btn = page.locator('button:has-text("发布")').first
+            await publish_btn.click()
+            await asyncio.sleep(3)
+
+            return UploadResult(success=True, post_url=page.url)
+
+        except PwTimeout as e:
+            return UploadResult(success=False, error_message=f"Timeout: {str(e)[:200]}")
+        except Exception as e:
+            return UploadResult(success=False, error_message=str(e)[:500])
+        finally:
+            await page.close()

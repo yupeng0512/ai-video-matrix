@@ -1,0 +1,34 @@
+# Distributed Worker Deployment — Phase 4 Configuration
+# Deploy multiple publisher workers across machines for 200-1000 account scale.
+#
+# Architecture:
+#   - Central: PostgreSQL, Redis, RabbitMQ, MinIO, n8n, content-planner, content-router
+#   - Workers: publisher instances (1 per machine, 20-50 accounts each)
+#
+# Usage:
+#   On each worker machine, run with the central service URLs configured:
+#   docker compose -f docker-compose.worker.yml up -d
+
+version: "3.8"
+
+services:
+  publisher-worker:
+    build: ./services/publisher
+    restart: unless-stopped
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://matrix:${PG_PASSWORD}@${CENTRAL_HOST}:5432/ai_video_matrix
+      - REDIS_URL=redis://${CENTRAL_HOST}:6379/0
+      - RABBITMQ_URL=amqp://matrix:${RMQ_PASSWORD}@${CENTRAL_HOST}:5672/
+      - MINIO_ENDPOINT=http://${CENTRAL_HOST}:9000
+      - MINIO_ROOT_USER=${MINIO_USER}
+      - MINIO_ROOT_PASSWORD=${MINIO_PASS}
+      - MINIO_BUCKET=videos
+      - PROXY_POOL_URL=${PROXY_POOL_URL}
+      - MAX_WORKERS=${MAX_WORKERS:-10}
+      - PUBLISH_INTERVAL_SECONDS=180
+      - CONTENT_ROUTER_URL=http://${CENTRAL_HOST}:8012
+    deploy:
+      resources:
+        limits:
+          cpus: "4"
+          memory: 8G

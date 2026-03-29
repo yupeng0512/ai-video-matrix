@@ -1,0 +1,97 @@
+{
+  "dashboard": {
+    "title": "AI Video Matrix - Operations Dashboard",
+    "uid": "ai-video-matrix",
+    "timezone": "browser",
+    "panels": [
+      {
+        "title": "Videos Published (24h)",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 6, "x": 0, "y": 0},
+        "targets": [
+          {
+            "rawSql": "SELECT COUNT(*) FROM content_ledger WHERE status='published' AND published_at >= now() - interval '24 hours'",
+            "format": "table"
+          }
+        ]
+      },
+      {
+        "title": "Success Rate (24h)",
+        "type": "gauge",
+        "gridPos": {"h": 4, "w": 6, "x": 6, "y": 0},
+        "targets": [
+          {
+            "rawSql": "SELECT ROUND(COUNT(*) FILTER (WHERE status='published')::numeric / NULLIF(COUNT(*),0) * 100, 1) FROM content_ledger WHERE created_at >= now() - interval '24 hours'",
+            "format": "table"
+          }
+        ]
+      },
+      {
+        "title": "Active Accounts",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 6, "x": 12, "y": 0},
+        "targets": [
+          {
+            "rawSql": "SELECT COUNT(*) FROM accounts WHERE status='active'",
+            "format": "table"
+          }
+        ]
+      },
+      {
+        "title": "Banned Accounts",
+        "type": "stat",
+        "gridPos": {"h": 4, "w": 6, "x": 18, "y": 0},
+        "targets": [
+          {
+            "rawSql": "SELECT COUNT(*) FROM accounts WHERE status='banned'",
+            "format": "table"
+          }
+        ]
+      },
+      {
+        "title": "Publishing Activity (by hour)",
+        "type": "timeseries",
+        "gridPos": {"h": 8, "w": 12, "x": 0, "y": 4},
+        "targets": [
+          {
+            "rawSql": "SELECT date_trunc('hour', published_at) as time, COUNT(*) as count FROM content_ledger WHERE published_at >= now() - interval '7 days' GROUP BY 1 ORDER BY 1",
+            "format": "time_series"
+          }
+        ]
+      },
+      {
+        "title": "Platform Distribution",
+        "type": "piechart",
+        "gridPos": {"h": 8, "w": 6, "x": 12, "y": 4},
+        "targets": [
+          {
+            "rawSql": "SELECT platform, COUNT(*) as count FROM content_ledger WHERE status='published' GROUP BY platform",
+            "format": "table"
+          }
+        ]
+      },
+      {
+        "title": "Account Health",
+        "type": "table",
+        "gridPos": {"h": 8, "w": 6, "x": 18, "y": 4},
+        "targets": [
+          {
+            "rawSql": "SELECT a.username, a.platform, a.status, COUNT(cl.id) FILTER (WHERE cl.status='published') as published, COUNT(cl.id) FILTER (WHERE cl.status='failed') as failed FROM accounts a LEFT JOIN content_ledger cl ON a.id = cl.account_id AND cl.created_at >= now() - interval '7 days' GROUP BY a.id, a.username, a.platform, a.status ORDER BY a.platform, a.username",
+            "format": "table"
+          }
+        ]
+      },
+      {
+        "title": "Failed Tasks (Recent)",
+        "type": "table",
+        "gridPos": {"h": 8, "w": 24, "x": 0, "y": 12},
+        "targets": [
+          {
+            "rawSql": "SELECT pt.id, pt.platform, a.username, pt.error_message, pt.retry_count, pt.created_at FROM publish_tasks pt JOIN accounts a ON pt.account_id = a.id WHERE pt.status = 'failed' ORDER BY pt.created_at DESC LIMIT 20",
+            "format": "table"
+          }
+        ]
+      }
+    ]
+  }
+}
