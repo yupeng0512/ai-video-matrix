@@ -47,7 +47,7 @@ stress-test-full:
 
 # Test video API
 test-kling:
-	python scripts/test_video_api.py --provider kling --api-key $(API_KEY)
+	python scripts/test_video_api.py --provider kling --api-key $(API_KEY) --secret-key $(SECRET_KEY)
 
 test-jimeng:
 	python scripts/test_video_api.py --provider jimeng --api-key $(API_KEY)

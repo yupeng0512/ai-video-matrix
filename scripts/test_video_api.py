@@ -7,19 +7,49 @@ Usage:
 import argparse
 import asyncio
 import json
+import os
 import time
 from pathlib import Path
 
 import httpx
+import jwt
 
 
-async def test_kling_api(prompt: str, api_key: str, base_url: str) -> dict:
-    """Test Kling (可灵) video generation API."""
+def _kling_jwt_token(access_key: str, secret_key: str) -> str:
+    """Generate a JWT token for Kling API authentication."""
+    now = int(time.time())
+    payload = {
+        "iss": access_key,
+        "exp": now + 1800,
+        "nbf": now - 5,
+        "iat": now,
+    }
+    headers = {"alg": "HS256", "typ": "JWT"}
+    return jwt.encode(payload, secret_key, algorithm="HS256", headers=headers)
+
+
+async def test_kling_api(prompt: str, api_key: str, base_url: str,
+                         secret_key: str = "") -> dict:
+    """Test Kling (可灵) video generation API.
+
+    Uses JWT auth: access_key + secret_key → signed JWT Bearer token.
+    """
+    if not secret_key:
+        secret_key = os.getenv("KLING_SECRET_KEY", "")
+    if not secret_key:
+        return {
+            "provider": "kling",
+            "status": "error",
+            "error": "KLING_SECRET_KEY is required for JWT authentication",
+            "elapsed_seconds": 0,
+        }
+
+    token = _kling_jwt_token(api_key, secret_key)
     start = time.time()
     async with httpx.AsyncClient(timeout=300) as client:
         resp = await client.post(
             f"{base_url}/v1/videos/generations",
-            headers={"Authorization": f"Bearer {api_key}"},
+            headers={"Authorization": f"Bearer {token}"},
             json={
                 "prompt": prompt,
                 "duration": 5,
@@ -105,17 +135,20 @@ SAMPLE_PRODUCTS = [
 ]
 
 
-async def run_comparison(provider: str, api_key: str, base_url: str):
+async def run_comparison(provider: str, api_key: str, base_url: str,
+                         secret_key: str = ""):
     """Run quality comparison tests for 3 products."""
-    test_fn = test_kling_api if provider == "kling" else test_jimeng_api
-
     results = []
     for product in SAMPLE_PRODUCTS:
         print(f"\n{'='*60}")
         print(f"Testing product: {product['name']}")
         for prompt in product["prompts"]:
             print(f"  Prompt: {prompt[:60]}...")
-            result = await test_fn(prompt, api_key, base_url)
+            if provider == "kling":
+                result = await test_kling_api(prompt, api_key, base_url,
+                                              secret_key=secret_key)
+            else:
+                result = await test_jimeng_api(prompt, api_key, base_url)
             result["product"] = product["name"]
             result["prompt"] = prompt
             results.append(result)
@@ -137,6 +170,8 @@ def main():
     parser = argparse.ArgumentParser(description="Test video generation APIs")
     parser.add_argument("--provider", choices=["kling", "jimeng"], required=True)
     parser.add_argument("--api-key", required=True)
+    parser.add_argument("--secret-key", default="",
+                        help="Kling Secret Key (or set KLING_SECRET_KEY env var)")
     parser.add_argument("--base-url", default="")
     parser.add_argument("--prompt", help="Single prompt to test (overrides built-in samples)")
     args = parser.parse_args()
@@ -147,7 +182,8 @@ def main():
             else "https://api.jimeng.jianying.com"
         )
 
-    asyncio.run(run_comparison(args.provider, args.api_key, args.base_url))
+    asyncio.run(run_comparison(args.provider, args.api_key, args.base_url,
+                               secret_key=args.secret_key))
 
 
 if __name__ == "__main__":
