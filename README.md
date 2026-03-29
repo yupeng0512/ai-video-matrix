@@ -14,44 +14,89 @@ content-router (平台隔离路由) → Redis Queue → publisher workers
 PostgreSQL (台账)                    Playwright + CloakBrowser
 ```
 
-| 服务 | 端口 | 职责 |
+## 域名访问（Traefik 网关）
+
+所有 Web UI 通过 Traefik 统一域名访问，无需记忆端口号：
+
+| 域名 | 服务 | 用途 |
 |------|------|------|
-| n8n | 5678 | 全链路编排 |
-| MoneyPrinterTurbo | 8501 | LLM+FFmpeg 视频生成 |
-| content-planner | 8010 | LLM 脚本变体生成器 |
-| video-mutator | 8011 | 五维视频变异 + 相似度校验 |
-| content-router | 8012 | 平台隔离路由 + 账号管理 |
-| publisher | 8013 | 多账号并发发布 |
-| MinIO | 9000/9001 | 视频文件存储 |
-| PostgreSQL | 5432 | 数据存储 |
-| Redis | 6379 | 缓存/队列 |
-| RabbitMQ | 5672/15672 | 消息队列 |
-| Grafana | 3000 | 监控看板 |
+| `vm-n8n.dev.local` | n8n | 全链路编排面板 |
+| `vm-mpt.dev.local` | MoneyPrinterTurbo | LLM+FFmpeg 视频生成 |
+| `vm-minio.dev.local` | MinIO Console | 视频文件管理 |
+| `vm-grafana.dev.local` | Grafana | 监控看板 |
+| `vm-rabbitmq.dev.local` | RabbitMQ Management | 消息队列管理 |
+
+**Mac 远程访问**：在 Mac 的 `/etc/hosts` 添加一行：
+
+```bash
+9.135.86.144 vm-n8n.dev.local vm-mpt.dev.local vm-minio.dev.local vm-grafana.dev.local vm-rabbitmq.dev.local
+```
+
+后端微服务（content-planner, video-mutator, content-router, publisher）只在内部网络运行，通过 `docker compose exec` 或 n8n 编排访问。
+
+### 保留的本机端口（127.0.0.1，仅调试用）
+
+| 端口 | 服务 | 协议 |
+|------|------|------|
+| 5434 | PostgreSQL | postgresql |
+| 6381 | Redis | redis |
+| 5673 | RabbitMQ | amqp |
 
 ## 快速开始
 
 ```bash
 # 1. 复制并编辑环境变量
 cp .env.example .env
-vi .env
+vi .env   # 填入 DEEPSEEK_API_KEY 和 KLING_API_KEY
 
 # 2. 一键部署
 make setup
 
-# 3. 健康检查
+# 3. 查看可用域名
+make domains
+
+# 4. 健康检查
 make health
 
-# 4. 创建产品
-curl -X POST http://localhost:8010/products \
-  -H 'Content-Type: application/json' \
-  -d '{"name":"智能手表", "description":"高端智能手表", "keywords":["智能","手表"]}'
-
-# 5. 注册账号
-python scripts/seed_accounts.py --all --count 5
+# 5. 创建产品（通过 docker exec）
+docker compose exec -T content-planner wget -qO- \
+  --post-data='{"name":"智能手表","description":"高端智能手表","keywords":["智能","手表"]}' \
+  --header='Content-Type: application/json' \
+  http://localhost:8000/products
 
 # 6. 导入 n8n 工作流
-# 打开 http://localhost:5678 → Import → n8n-workflows/video-matrix-pipeline.json
+# 打开 http://vm-n8n.dev.local → Import → n8n-workflows/video-matrix-pipeline.json
 ```
+
+## Test Harness（零成本端到端测试）
+
+内置测试环境，用 Mock 服务替代真实 API，实现零成本全链路验证。
+
+```bash
+# 一键启动测试环境（包含 mock-kling-api + mock-platform + 种子数据）
+make test-harness-up
+
+# 运行全部 5 个 E2E 测试
+make test-harness-run
+
+# 清理测试环境
+make test-harness-down
+```
+
+### 测试覆盖
+
+| 测试 | 飞轮齿轮 | 验证内容 |
+|------|---------|---------|
+| test_01 | Gear 1: 脚本差异化 | LLM 生成多样化脚本 |
+| test_02 | Gear 2: 视频变异 | FFmpeg 变异 + 哈希校验 |
+| test_03 | Gear 4: 平台隔离 | 同平台去重 + 跨平台复用 |
+| test_04 | Gear 5: 账号生命周期 | 健康检查 + 冷却/恢复 |
+| test_05 | 跨齿轮 | Mock API + 上传流程 |
+
+### 测试模式
+
+- `TEST_MODE=mock`（默认）：使用 Mock 服务，零 API 调用成本
+- `TEST_MODE=real`：调用真实 API（可灵 + DeepSeek），用于上线前验证
 
 ## 核心特性
 
@@ -85,13 +130,35 @@ python scripts/seed_accounts.py --all --count 5
 make start           # 启动所有服务
 make stop            # 停止所有服务
 make logs            # 查看日志
+make domains         # 显示所有域名路由
+make health          # 服务健康检查
 make stats           # 查看发布统计
 make accounts        # 查看账号列表
-make stress-test     # 运行压力测试 (30min)
-make stress-test-full # 运行压力测试 (72h)
 make db-shell        # 进入数据库
+make stress-test     # 压力测试 (30min)
+make test-harness-run # E2E 测试
 make clean           # 清理所有数据（危险）
 ```
+
+## 网络隔离
+
+```
+            ┌─── traefik-net ──────────────────────┐
+            │                                      │
+         Traefik    n8n   MoneyPrinter   MinIO   Grafana   RabbitMQ
+            │       (桥接点)                                 (mgmt)
+            └──────────────────────────────────────┘
+                        │
+            ┌─── internal ─────────────────────────┐
+            │                                      │
+     content-planner  video-mutator  content-router  publisher
+            │
+     ┌──────┼──────┐
+  postgres  redis  rabbitmq  minio
+```
+
+- **traefik-net**：仅 Web UI 面向用户的服务
+- **internal**：所有后端微服务 + 数据存储，出站 HTTPS 不被 Traefik 拦截
 
 ## 渐进式落地
 
@@ -104,4 +171,4 @@ make clean           # 清理所有数据（危险）
 
 ## 技术栈
 
-Python 3.12 / FastAPI / Playwright / FFmpeg / PostgreSQL / Redis / RabbitMQ / MinIO / n8n / Docker Compose
+Python 3.12 / FastAPI / Playwright / FFmpeg / PostgreSQL / Redis / RabbitMQ / MinIO / n8n / Docker Compose / Traefik

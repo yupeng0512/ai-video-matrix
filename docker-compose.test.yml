@@ -1,0 +1,86 @@
+# Test Harness overlay — extends docker-compose.yml
+# Usage: docker compose -f docker-compose.yml -f docker-compose.test.yml up -d
+#
+# Adds mock services and overrides real API endpoints.
+# Default: TEST_MODE=mock (zero cost). Set TEST_MODE=real to use real APIs.
+
+services:
+  # ============================================================
+  # Mock Services (zero-cost API replacements)
+  # ============================================================
+
+  mock-kling-api:
+    build: ./tests/mocks
+    command: uvicorn mock_kling_api:app --host 0.0.0.0 --port 8000
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+
+  mock-platform:
+    build: ./tests/mocks
+    command: uvicorn mock_platform:app --host 0.0.0.0 --port 8000
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+
+  # ============================================================
+  # Service overrides for test mode
+  # ============================================================
+
+  content-planner:
+    environment:
+      - LLM_PROVIDER=deepseek
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
+      - DEEPSEEK_BASE_URL=${DEEPSEEK_BASE_URL:-https://api.deepseek.com/v1}
+
+  video-mutator:
+    environment:
+      - KLING_BASE_URL=http://mock-kling-api:8000
+
+  publisher:
+    environment:
+      - MOCK_PLATFORM_URL=http://mock-platform:8000
+      - TEST_MODE=${TEST_MODE:-mock}
+
+  # Seed data init container
+  test-seed:
+    image: postgres:16-alpine
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PGPASSWORD: ${POSTGRES_PASSWORD}
+    entrypoint: ["sh", "-c"]
+    command:
+      - |
+        psql -h postgres -U ${POSTGRES_USER:-matrix} -d ${POSTGRES_DB:-ai_video_matrix} <<'SQL'
+        -- Seed test products
+        INSERT INTO products (id, name, description, keywords)
+        VALUES
+          ('00000000-0000-0000-0000-000000000001', 'Test Smart Watch', 'AI-powered smartwatch with health tracking', ARRAY['smart','watch','health']),
+          ('00000000-0000-0000-0000-000000000002', 'Test Earbuds Pro', 'Wireless noise-cancelling earbuds', ARRAY['earbuds','wireless','audio']),
+          ('00000000-0000-0000-0000-000000000003', 'Test Robot Vacuum', 'Smart robot vacuum with LIDAR navigation', ARRAY['vacuum','robot','cleaning'])
+        ON CONFLICT (id) DO NOTHING;
+
+        -- Seed test accounts (1 per platform)
+        INSERT INTO accounts (id, platform, username, display_name, status, daily_limit)
+        VALUES
+          ('a0000000-0000-0000-0000-000000000001', 'douyin', 'test_douyin_01', 'Test Douyin', 'active', 10),
+          ('a0000000-0000-0000-0000-000000000002', 'kuaishou', 'test_kuaishou_01', 'Test Kuaishou', 'active', 10),
+          ('a0000000-0000-0000-0000-000000000003', 'xiaohongshu', 'test_xhs_01', 'Test XHS', 'active', 10),
+          ('a0000000-0000-0000-0000-000000000004', 'weixin_channel', 'test_weixin_01', 'Test WeChat', 'active', 10),
+          ('a0000000-0000-0000-0000-000000000005', 'douyin', 'test_douyin_02', 'Test Douyin 2', 'active', 10)
+        ON CONFLICT (platform, username) DO NOTHING;
+        SQL
+        echo "✅ Test seed data loaded"
+    networks:
+      - internal
+    restart: "no"

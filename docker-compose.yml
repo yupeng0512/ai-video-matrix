@@ -1,8 +1,6 @@
-version: "3.8"
-
 services:
   # ============================================================
-  # Infrastructure Layer
+  # Infrastructure Layer (internal network only)
   # ============================================================
 
   postgres:
@@ -16,7 +14,9 @@ services:
       - ./storage/postgres/data:/var/lib/postgresql/data
       - ./storage/postgres/migrations/001_init.sql:/docker-entrypoint-initdb.d/001_init.sql
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5434:5432"
+    networks:
+      - internal
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER}"]
       interval: 5s
@@ -27,7 +27,9 @@ services:
     image: redis:7-alpine
     restart: unless-stopped
     ports:
-      - "6379:6379"
+      - "127.0.0.1:6381:6379"
+    networks:
+      - internal
     healthcheck:
       test: ["CMD", "redis-cli", "ping"]
       interval: 5s
@@ -41,8 +43,15 @@ services:
       RABBITMQ_DEFAULT_USER: ${RABBITMQ_DEFAULT_USER}
       RABBITMQ_DEFAULT_PASS: ${RABBITMQ_DEFAULT_PASS}
     ports:
-      - "5672:5672"
-      - "15672:15672"
+      - "127.0.0.1:5673:5672"
+    networks:
+      - internal
+      - traefik-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.vm-rabbitmq.rule=Host(`vm-rabbitmq.dev.local`)"
+      - "traefik.http.routers.vm-rabbitmq.entrypoints=web"
+      - "traefik.http.services.vm-rabbitmq.loadbalancer.server.port=15672"
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
       interval: 10s
@@ -58,9 +67,14 @@ services:
       MINIO_ROOT_PASSWORD: ${MINIO_ROOT_PASSWORD}
     volumes:
       - ./storage/minio/data:/data
-    ports:
-      - "9000:9000"
-      - "9001:9001"
+    networks:
+      - internal
+      - traefik-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.vm-minio.rule=Host(`vm-minio.dev.local`)"
+      - "traefik.http.routers.vm-minio.entrypoints=web"
+      - "traefik.http.services.vm-minio.loadbalancer.server.port=9001"
     healthcheck:
       test: ["CMD", "mc", "ready", "local"]
       interval: 10s
@@ -68,7 +82,7 @@ services:
       retries: 5
 
   # ============================================================
-  # Orchestration Layer
+  # Orchestration Layer (n8n has Web UI → traefik-net)
   # ============================================================
 
   n8n:
@@ -82,8 +96,14 @@ services:
     volumes:
       - n8n_data:/home/node/.n8n
       - ./n8n-workflows:/home/node/workflows
-    ports:
-      - "5678:5678"
+    networks:
+      - internal
+      - traefik-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.vm-n8n.rule=Host(`vm-n8n.dev.local`)"
+      - "traefik.http.routers.vm-n8n.entrypoints=web"
+      - "traefik.http.services.vm-n8n.loadbalancer.server.port=5678"
     depends_on:
       postgres:
         condition: service_healthy
@@ -99,10 +119,16 @@ services:
     restart: unless-stopped
     environment:
       - STREAMLIT_SERVER_PORT=8501
-    ports:
-      - "${MPT_PORT:-8501}:8501"
     volumes:
       - moneyprinter_data:/app/storage
+    networks:
+      - internal
+      - traefik-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.vm-mpt.rule=Host(`vm-mpt.dev.local`)"
+      - "traefik.http.routers.vm-mpt.entrypoints=web"
+      - "traefik.http.services.vm-mpt.loadbalancer.server.port=8501"
 
   content-planner:
     build: ./services/content-planner
@@ -113,14 +139,14 @@ services:
       - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
       - DEEPSEEK_BASE_URL=${DEEPSEEK_BASE_URL}
       - OPENAI_API_KEY=${OPENAI_API_KEY}
-    ports:
-      - "8010:8000"
+    networks:
+      - internal
     depends_on:
       postgres:
         condition: service_healthy
 
   # ============================================================
-  # Processing Layer
+  # Processing Layer (internal only — needs HTTPS outbound)
   # ============================================================
 
   video-mutator:
@@ -128,12 +154,12 @@ services:
     restart: unless-stopped
     environment:
       - DATABASE_URL=${DATABASE_URL}
-      - MINIO_ENDPOINT=${MINIO_ENDPOINT}
+      - MINIO_ENDPOINT=http://minio:9000
       - MINIO_ROOT_USER=${MINIO_ROOT_USER}
       - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
       - MINIO_BUCKET=${MINIO_BUCKET}
-    ports:
-      - "8011:8000"
+    networks:
+      - internal
     depends_on:
       postgres:
         condition: service_healthy
@@ -145,10 +171,10 @@ services:
     restart: unless-stopped
     environment:
       - DATABASE_URL=${DATABASE_URL}
-      - REDIS_URL=${REDIS_URL}
-      - RABBITMQ_URL=${RABBITMQ_URL}
-    ports:
-      - "8012:8000"
+      - REDIS_URL=redis://redis:6379/0
+      - RABBITMQ_URL=amqp://${RABBITMQ_DEFAULT_USER}:${RABBITMQ_DEFAULT_PASS}@rabbitmq:5672/
+    networks:
+      - internal
     depends_on:
       postgres:
         condition: service_healthy
@@ -156,7 +182,7 @@ services:
         condition: service_healthy
 
   # ============================================================
-  # Publishing Layer
+  # Publishing Layer (internal only — needs HTTPS outbound)
   # ============================================================
 
   publisher:
@@ -164,16 +190,16 @@ services:
     restart: unless-stopped
     environment:
       - DATABASE_URL=${DATABASE_URL}
-      - REDIS_URL=${REDIS_URL}
-      - RABBITMQ_URL=${RABBITMQ_URL}
-      - MINIO_ENDPOINT=${MINIO_ENDPOINT}
+      - REDIS_URL=redis://redis:6379/0
+      - RABBITMQ_URL=amqp://${RABBITMQ_DEFAULT_USER}:${RABBITMQ_DEFAULT_PASS}@rabbitmq:5672/
+      - MINIO_ENDPOINT=http://minio:9000
       - MINIO_ROOT_USER=${MINIO_ROOT_USER}
       - MINIO_ROOT_PASSWORD=${MINIO_ROOT_PASSWORD}
       - MINIO_BUCKET=${MINIO_BUCKET}
       - PROXY_POOL_URL=${PROXY_POOL_URL}
       - CONTENT_ROUTER_URL=http://content-router:8000
-    ports:
-      - "8013:8000"
+    networks:
+      - internal
     depends_on:
       postgres:
         condition: service_healthy
@@ -181,7 +207,7 @@ services:
         condition: service_healthy
 
   # ============================================================
-  # Monitoring Layer
+  # Monitoring Layer (Grafana has Web UI → traefik-net)
   # ============================================================
 
   grafana:
@@ -191,10 +217,23 @@ services:
       - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD}
     volumes:
       - grafana_data:/var/lib/grafana
-    ports:
-      - "3000:3000"
+    networks:
+      - internal
+      - traefik-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.vm-grafana.rule=Host(`vm-grafana.dev.local`)"
+      - "traefik.http.routers.vm-grafana.entrypoints=web"
+      - "traefik.http.services.vm-grafana.loadbalancer.server.port=3000"
 
 volumes:
   n8n_data:
   moneyprinter_data:
   grafana_data:
+
+networks:
+  internal:
+    driver: bridge
+  traefik-net:
+    name: traefik-net
+    external: true

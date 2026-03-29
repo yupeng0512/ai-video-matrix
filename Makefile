@@ -1,8 +1,10 @@
-.PHONY: setup start stop logs build test stress-test clean
+.PHONY: setup start stop logs build test stress-test clean health
 
 # ============================================================
 # AI Video Matrix — Makefile
 # ============================================================
+
+HOST_IP ?= 9.135.86.144
 
 setup:
 	bash scripts/setup.sh
@@ -52,24 +54,50 @@ test-kling:
 test-jimeng:
 	python scripts/test_video_api.py --provider jimeng --api-key $(API_KEY)
 
-# Health check all services
+# Health check — uses container-internal networking via docker exec
 health:
-	@echo "Content Planner:" && curl -s http://localhost:8010/health | python -m json.tool
-	@echo "Video Mutator:" && curl -s http://localhost:8011/health | python -m json.tool
-	@echo "Content Router:" && curl -s http://localhost:8012/health | python -m json.tool
-	@echo "Publisher:" && curl -s http://localhost:8013/health | python -m json.tool
+	@echo "=== Content Planner ===" && docker compose exec -T content-planner wget -qO- http://localhost:8000/health 2>/dev/null || echo "  DOWN"
+	@echo "=== Video Mutator ===" && docker compose exec -T video-mutator wget -qO- http://localhost:8000/health 2>/dev/null || echo "  DOWN"
+	@echo "=== Content Router ===" && docker compose exec -T content-router wget -qO- http://localhost:8000/health 2>/dev/null || echo "  DOWN"
+	@echo "=== Publisher ===" && docker compose exec -T publisher wget -qO- http://localhost:8000/health 2>/dev/null || echo "  DOWN"
 
-# View publishing stats
+# View publishing stats (via content-router internal)
 stats:
-	@curl -s http://localhost:8012/stats | python -m json.tool
+	@docker compose exec -T content-router wget -qO- http://localhost:8000/stats 2>/dev/null | python3 -m json.tool || echo "content-router not running"
 
 # View accounts
 accounts:
-	@curl -s http://localhost:8012/accounts | python -m json.tool
+	@docker compose exec -T content-router wget -qO- http://localhost:8000/accounts 2>/dev/null | python3 -m json.tool || echo "content-router not running"
 
-# Database shell
+# Database shell (port 5434 on host, mapped to 127.0.0.1)
 db-shell:
 	docker compose exec postgres psql -U matrix -d ai_video_matrix
+
+# Show Traefik domain routes
+domains:
+	@echo "=== AI Video Matrix — Domain Routes ==="
+	@echo "  n8n Workflow:    http://vm-n8n.dev.local"
+	@echo "  MoneyPrinter:    http://vm-mpt.dev.local"
+	@echo "  MinIO Console:   http://vm-minio.dev.local"
+	@echo "  Grafana:         http://vm-grafana.dev.local"
+	@echo "  RabbitMQ Mgmt:   http://vm-rabbitmq.dev.local"
+	@echo ""
+	@echo "=== Mac /etc/hosts ==="
+	@echo "  $(HOST_IP) vm-n8n.dev.local vm-mpt.dev.local vm-minio.dev.local vm-grafana.dev.local vm-rabbitmq.dev.local"
+
+# ── Test Harness ──────────────────────────────────────────────
+
+test-harness-up:
+	docker compose -f docker-compose.yml -f docker-compose.test.yml up -d
+
+test-harness-down:
+	docker compose -f docker-compose.yml -f docker-compose.test.yml down
+
+test-harness-run:
+	docker compose -f docker-compose.yml -f docker-compose.test.yml up -d
+	@echo "Waiting for services..." && sleep 15
+	python3 tests/e2e/run_all.py
+	docker compose -f docker-compose.yml -f docker-compose.test.yml down
 
 # Clean all data (DESTRUCTIVE)
 clean:
