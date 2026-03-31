@@ -52,6 +52,9 @@ services:
       - "traefik.http.routers.vm-rabbitmq.rule=Host(`vm-rabbitmq.dev.local`)"
       - "traefik.http.routers.vm-rabbitmq.entrypoints=web"
       - "traefik.http.services.vm-rabbitmq.loadbalancer.server.port=15672"
+      - "traefik.http.middlewares.rabbitmq-headers.headers.customResponseHeaders.X-Frame-Options="
+      - "traefik.http.middlewares.rabbitmq-headers.headers.customResponseHeaders.Content-Security-Policy="
+      - "traefik.http.routers.vm-rabbitmq.middlewares=rabbitmq-headers"
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
       interval: 10s
@@ -108,6 +111,9 @@ services:
       - "traefik.http.routers.vm-n8n.rule=Host(`vm-n8n.dev.local`)"
       - "traefik.http.routers.vm-n8n.entrypoints=web"
       - "traefik.http.services.vm-n8n.loadbalancer.server.port=5678"
+      - "traefik.http.middlewares.n8n-headers.headers.customResponseHeaders.X-Frame-Options="
+      - "traefik.http.middlewares.n8n-headers.headers.customResponseHeaders.Content-Security-Policy="
+      - "traefik.http.routers.vm-n8n.middlewares=n8n-headers"
     depends_on:
       postgres:
         condition: service_healthy
