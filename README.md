@@ -47,7 +47,7 @@ PostgreSQL (台账)                    Playwright + CloakBrowser
 ```bash
 # 1. 复制并编辑环境变量
 cp .env.example .env
-vi .env   # 填入 DEEPSEEK_API_KEY 和 KLING_API_KEY
+vi .env   # 填入 DEEPSEEK_API_KEY 和 KLING_ACCESS_KEY / KLING_SECRET_KEY
 
 # 2. 一键部署
 make setup

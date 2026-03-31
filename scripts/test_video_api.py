@@ -48,12 +48,13 @@ async def test_kling_api(prompt: str, api_key: str, base_url: str,
     start = time.time()
     async with httpx.AsyncClient(timeout=300) as client:
         resp = await client.post(
-            f"{base_url}/v1/videos/generations",
+            f"{base_url}/v1/videos/text2video",
             headers={"Authorization": f"Bearer {token}"},
             json={
+                "model_name": "kling-v1",
                 "prompt": prompt,
-                "duration": 5,
-                "aspect_ratio": "9:16",
+                "duration": "5",
+                "mode": "std",
             },
         )
         elapsed = time.time() - start

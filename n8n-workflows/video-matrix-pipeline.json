@@ -64,15 +64,16 @@
             },
             {
                 "parameters": {
-                    "url": "={{$env.KLING_BASE_URL || 'https://api.klingai.com'}}/v1/videos/generations",
+                    "url": "={{$env.KLING_BASE_URL || 'https://api.klingai.com'}}/v1/videos/text2video",
                     "method": "POST",
                     "headers": {
-                        "Authorization": "Bearer {{$env.KLING_API_KEY}}"
+                        "Authorization": "Bearer {{$env.KLING_ACCESS_KEY}}"
                     },
                     "body": {
+                        "model_name": "kling-v1",
                         "prompt": "={{$json.visual_desc}}",
-                        "duration": 5,
-                        "aspect_ratio": "9:16"
+                        "duration": "5",
+                        "mode": "std"
                     },
                     "responseFormat": "json"
                 },

@@ -4,16 +4,34 @@ Uses videohash to generate 64-bit perceptual hashes, then compares
 Hamming distance to detect near-duplicate videos.
 """
 import asyncio
-import functools
+import hashlib
+import logging
 from pathlib import Path
+
+from PIL import Image
+if not hasattr(Image, "ANTIALIAS"):
+    Image.ANTIALIAS = Image.LANCZOS
 
 from videohash import VideoHash
 
+logger = logging.getLogger(__name__)
+
 
 def _compute_hash(video_path: str) -> str:
-    """Compute perceptual hash for a video file (blocking call)."""
-    vh = VideoHash(path=video_path)
-    return vh.hash_hex
+    """Compute perceptual hash for a video file (blocking call).
+
+    Falls back to SHA-256 of the file if videohash fails.
+    """
+    try:
+        vh = VideoHash(path=video_path)
+        return vh.hash_hex
+    except Exception as exc:
+        logger.warning("videohash failed, falling back to file SHA-256: %s", exc)
+        sha = hashlib.sha256()
+        with open(video_path, "rb") as f:
+            for chunk in iter(lambda: f.read(8192), b""):
+                sha.update(chunk)
+        return sha.hexdigest()[:16]
 
 
 async def compute_hash(video_path: str) -> str:
