@@ -1,17 +1,10 @@
-"""AI Video Matrix — Unified Portal with reverse proxy."""
+"""AI Video Matrix — Unified Portal."""
 import httpx
-from fastapi import FastAPI, Request
-from fastapi.responses import HTMLResponse, Response
+from fastapi import FastAPI
+from fastapi.responses import HTMLResponse
 import os
 
 app = FastAPI(title="AI Video Matrix Portal")
-
-PROXY_TARGETS = {
-    "n8n": "http://n8n:5678",
-    "grafana": "http://grafana:3000",
-    "minio": "http://minio:9001",
-    "rabbitmq": "http://rabbitmq:15672",
-}
 
 
 @app.get("/api/status")
@@ -45,47 +38,31 @@ async def proxy_stats():
             return {"error": "content-router unreachable"}
 
 
-@app.api_route("/proxy/{service}/{path:path}", methods=["GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS", "HEAD"])
-async def reverse_proxy(service: str, path: str, request: Request):
-    """Reverse proxy to internal services."""
-    target = PROXY_TARGETS.get(service)
-    if not target:
-        return Response(content=f"Unknown service: {service}", status_code=404)
-
-    url = f"{target}/{path}"
-    if request.query_params:
-        url += f"?{request.query_params}"
-
-    headers = dict(request.headers)
-    for h in ["host", "connection", "transfer-encoding"]:
-        headers.pop(h, None)
-
-    body = await request.body()
-
-    async with httpx.AsyncClient(timeout=30, follow_redirects=True) as client:
-        try:
-            resp = await client.request(
-                method=request.method,
-                url=url,
-                headers=headers,
-                content=body if body else None,
-            )
-            resp_headers = dict(resp.headers)
-            for h in ["transfer-encoding", "connection", "content-encoding", "content-length"]:
-                resp_headers.pop(h, None)
-
-            return Response(
-                content=resp.content,
-                status_code=resp.status_code,
-                headers=resp_headers,
-            )
-        except Exception as e:
-            return Response(content=f"Proxy error: {str(e)}", status_code=502)
+@app.get("/api/tool-urls")
+async def tool_urls():
+    """Return tool service URLs and their internal reachability."""
+    tools = {
+        "n8n": {"url": "http://vm-n8n.dev.local", "internal": "http://n8n:5678", "name": "Workflow Engine"},
+        "grafana": {"url": "http://vm-grafana.dev.local", "internal": "http://grafana:3000", "name": "Monitoring"},
+        "minio": {"url": "http://vm-minio.dev.local", "internal": "http://minio:9001", "name": "Object Storage"},
+        "rabbitmq": {"url": "http://vm-rabbitmq.dev.local", "internal": "http://rabbitmq:15672", "name": "Message Queue"},
+    }
+    results = {}
+    async with httpx.AsyncClient(timeout=3) as client:
+        for key, info in tools.items():
+            try:
+                r = await client.get(info["internal"])
+                results[key] = {"url": info["url"], "name": info["name"], "internal_up": r.status_code < 500}
+            except Exception:
+                results[key] = {"url": info["url"], "name": info["name"], "internal_up": False}
+    return results
 
 
 @app.get("/", response_class=HTMLResponse)
 async def index():
-    return open(os.path.join(os.path.dirname(__file__), "static", "index.html")).read()
+    html_path = os.path.join(os.path.dirname(__file__), "static", "index.html")
+    with open(html_path, "r") as f:
+        return f.read()
 
 
 @app.get("/health")

@@ -248,6 +248,7 @@ body::before {
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  position: relative;
 }
 
 .main iframe {
@@ -417,6 +418,160 @@ body::before {
   color: var(--text-3);
   line-height: 1.4;
 }
+
+/* ── Iframe Fallback Panel ── */
+.iframe-fallback {
+  position: absolute;
+  inset: 0;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-base);
+  z-index: 5;
+  gap: 20px;
+  padding: 40px;
+}
+
+.iframe-fallback.visible {
+  display: flex;
+}
+
+.fallback-icon {
+  font-size: 48px;
+  opacity: 0.5;
+}
+
+.fallback-title {
+  font-size: 20px;
+  font-weight: 600;
+  color: var(--text-1);
+}
+
+.fallback-url {
+  font-family: var(--font-mono);
+  font-size: 13px;
+  color: var(--accent);
+  background: var(--accent-dim);
+  padding: 6px 14px;
+  border-radius: 6px;
+  border: 1px solid rgba(0, 212, 255, 0.2);
+  user-select: all;
+}
+
+.fallback-desc {
+  font-size: 13px;
+  color: var(--text-2);
+  text-align: center;
+  max-width: 480px;
+  line-height: 1.6;
+}
+
+.fallback-actions {
+  display: flex;
+  gap: 12px;
+  margin-top: 4px;
+}
+
+.btn {
+  font-family: var(--font-body);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 8px 20px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s;
+  border: none;
+  text-decoration: none;
+}
+
+.btn-primary {
+  background: var(--accent);
+  color: #000;
+}
+
+.btn-primary:hover {
+  background: #33ddff;
+  transform: translateY(-1px);
+}
+
+.btn-secondary {
+  background: var(--bg-elevated);
+  color: var(--text-1);
+  border: 1px solid var(--border);
+}
+
+.btn-secondary:hover {
+  border-color: var(--border-glow);
+  background: var(--bg-surface);
+}
+
+/* ── Setup Banner ── */
+.setup-banner {
+  display: none;
+  background: rgba(210, 153, 34, 0.08);
+  border: 1px solid rgba(210, 153, 34, 0.25);
+  border-radius: 8px;
+  padding: 14px 18px;
+  margin-bottom: 20px;
+  gap: 10px;
+  align-items: flex-start;
+}
+
+.setup-banner.visible {
+  display: flex;
+}
+
+.setup-banner-icon {
+  font-size: 18px;
+  flex-shrink: 0;
+  margin-top: 1px;
+}
+
+.setup-banner-body {
+  flex: 1;
+}
+
+.setup-banner-title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--warning);
+  margin-bottom: 4px;
+}
+
+.setup-banner-text {
+  font-size: 12px;
+  color: var(--text-2);
+  line-height: 1.5;
+}
+
+.setup-banner code {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  background: rgba(255,255,255,0.06);
+  padding: 1px 5px;
+  border-radius: 3px;
+  color: var(--text-1);
+}
+
+.setup-banner pre {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  background: rgba(0,0,0,0.3);
+  padding: 10px 12px;
+  border-radius: 6px;
+  margin-top: 8px;
+  color: var(--text-1);
+  line-height: 1.6;
+  overflow-x: auto;
+  user-select: all;
+}
+
+.setup-banner .btn {
+  font-size: 11px;
+  padding: 4px 12px;
+  margin-top: 8px;
+}
 </style>
 </head>
 <body>
@@ -459,6 +614,19 @@ body::before {
 
   <div class="main" id="main">
     <div class="overview" id="ov">
+      <div id="setupBanner" class="setup-banner">
+        <span class="setup-banner-icon">⚠</span>
+        <div class="setup-banner-body">
+          <div class="setup-banner-title">DNS Setup Required for Tool Panels</div>
+          <div class="setup-banner-text">
+            The tool panels (Workflow, Monitoring, Storage, Queue) use subdomain routing.
+            Add these entries to your <code>/etc/hosts</code> file, pointing to the server IP:
+          </div>
+          <pre id="hostsSnippet"></pre>
+          <button class="btn btn-secondary" onclick="dismissSetupBanner()">Dismiss</button>
+        </div>
+      </div>
+
       <div class="overview-header">
         <h2>Mission Control</h2>
         <p>AI Video Matrix operations dashboard — real-time system status and controls</p>
@@ -514,11 +682,42 @@ body::before {
         </div>
       </div>
     </div>
+
+    <!-- Fallback shown when iframe can't load -->
+    <div class="iframe-fallback" id="iframeFallback">
+      <div class="fallback-icon" id="fallbackIcon">🔌</div>
+      <div class="fallback-title" id="fallbackTitle">Service Unreachable</div>
+      <div class="fallback-url" id="fallbackUrl"></div>
+      <div class="fallback-desc" id="fallbackDesc">
+        This tool runs on a separate subdomain. Make sure you have DNS/hosts entries
+        configured so your browser can reach it.
+      </div>
+      <div class="fallback-actions">
+        <a class="btn btn-primary" id="fallbackOpen" href="#" target="_blank">Open in New Tab</a>
+        <button class="btn btn-secondary" onclick="retryIframe()">Retry</button>
+        <button class="btn btn-secondary" onclick="go('overview')">Back to Overview</button>
+      </div>
+    </div>
   </div>
 </div>
 
 <script>
-const TABS = { n8n:'/proxy/n8n/', grafana:'/proxy/grafana/', minio:'/proxy/minio/', rabbitmq:'/proxy/rabbitmq/' };
+const TABS = {
+  n8n:      'http://vm-n8n.dev.local',
+  grafana:  'http://vm-grafana.dev.local',
+  minio:    'http://vm-minio.dev.local',
+  rabbitmq: 'http://vm-rabbitmq.dev.local'
+};
+
+const TOOL_NAMES = {
+  n8n: 'Workflow Engine',
+  grafana: 'Monitoring',
+  minio: 'Object Storage',
+  rabbitmq: 'Message Queue'
+};
+
+const TOOL_ICONS = { n8n: '⬡', grafana: '◧', minio: '▤', rabbitmq: '⇶' };
+
 const SVCS = {
   'content-planner': { n:'Content Planner', d:'LLM script generation', dot:'d-planner' },
   'video-mutator':   { n:'Video Mutator',   d:'FFmpeg mutation engine', dot:'d-mutator' },
@@ -526,17 +725,103 @@ const SVCS = {
   'publisher':       { n:'Publisher',        d:'Multi-account Playwright workers', dot:'d-publisher' },
 };
 
+let currentTab = 'overview';
+let iframeLoadTimer = null;
+
 function go(tab) {
-  document.querySelectorAll('.nav-item').forEach(e => e.classList.toggle('active', e.dataset.tab === tab));
-  const m = document.getElementById('main'), ov = document.getElementById('ov');
+  currentTab = tab;
+  document.querySelectorAll('.nav-item').forEach(e =>
+    e.classList.toggle('active', e.dataset.tab === tab)
+  );
+  const m = document.getElementById('main');
+  const ov = document.getElementById('ov');
+  const fb = document.getElementById('iframeFallback');
+
   if (tab === 'overview') {
-    ov.style.display = ''; const f = m.querySelector('iframe'); if (f) f.remove();
-  } else {
-    ov.style.display = 'none';
-    let f = m.querySelector('iframe');
-    if (!f) { f = document.createElement('iframe'); m.appendChild(f); }
-    f.src = TABS[tab];
+    ov.style.display = '';
+    fb.classList.remove('visible');
+    const f = m.querySelector('iframe');
+    if (f) f.remove();
+    clearTimeout(iframeLoadTimer);
+    return;
   }
+
+  ov.style.display = 'none';
+  fb.classList.remove('visible');
+
+  let f = m.querySelector('iframe');
+  if (f) f.remove();
+
+  f = document.createElement('iframe');
+  f.setAttribute('sandbox', 'allow-same-origin allow-scripts allow-popups allow-forms allow-modals');
+
+  const url = TABS[tab];
+  f.src = url;
+
+  clearTimeout(iframeLoadTimer);
+  iframeLoadTimer = setTimeout(() => showFallback(tab), 12000);
+
+  f.addEventListener('load', () => {
+    clearTimeout(iframeLoadTimer);
+    fb.classList.remove('visible');
+  });
+
+  f.addEventListener('error', () => {
+    clearTimeout(iframeLoadTimer);
+    showFallback(tab);
+  });
+
+  m.appendChild(f);
+}
+
+function showFallback(tab) {
+  const fb = document.getElementById('iframeFallback');
+  const url = TABS[tab];
+  document.getElementById('fallbackIcon').textContent = TOOL_ICONS[tab] || '🔌';
+  document.getElementById('fallbackTitle').textContent = (TOOL_NAMES[tab] || tab) + ' — Connection Issue';
+  document.getElementById('fallbackUrl').textContent = url;
+  document.getElementById('fallbackOpen').href = url;
+
+  const serverIp = window.location.hostname === 'localhost' ? '127.0.0.1' : window.location.hostname;
+  document.getElementById('fallbackDesc').innerHTML =
+    'This service is running internally but your browser cannot reach <strong>' + url + '</strong>.<br>' +
+    'Add the following to your <code>/etc/hosts</code> file:<br><br>' +
+    '<code style="background:rgba(0,0,0,.3);padding:4px 8px;border-radius:4px">' +
+    serverIp + '  ' + new URL(url).hostname + '</code>';
+
+  fb.classList.add('visible');
+  const f = document.getElementById('main').querySelector('iframe');
+  if (f) f.style.display = 'none';
+}
+
+function retryIframe() {
+  if (currentTab && currentTab !== 'overview') {
+    go(currentTab);
+  }
+}
+
+function dismissSetupBanner() {
+  document.getElementById('setupBanner').classList.remove('visible');
+  try { sessionStorage.setItem('setup-banner-dismissed', '1'); } catch(e) {}
+}
+
+async function checkToolAccess() {
+  try {
+    const r = await fetch('/api/tool-urls');
+    const tools = await r.json();
+    for (const [k, info] of Object.entries(tools)) {
+      if (TABS[k]) TABS[k] = info.url;
+    }
+
+    const dismissed = sessionStorage.getItem('setup-banner-dismissed');
+    if (!dismissed) {
+      const serverIp = window.location.hostname === 'localhost' ? '127.0.0.1' : window.location.hostname;
+      const hosts = Object.values(tools).map(t => serverIp + '  ' + new URL(t.url).hostname).join('\n');
+      const snippet = document.getElementById('hostsSnippet');
+      snippet.textContent = '# AI Video Matrix — add to /etc/hosts\n' + hosts;
+      document.getElementById('setupBanner').classList.add('visible');
+    }
+  } catch(e) {}
 }
 
 async function poll() {
@@ -545,8 +830,16 @@ async function poll() {
     const g = document.getElementById('svcGrid'); g.innerHTML = '';
     for (const [k, info] of Object.entries(SVCS)) {
       const up = d[k]?.status === 'up';
-      document.getElementById(info.dot).className = `pulse ${up ? 'up' : 'down'}`;
-      g.innerHTML += `<div class="svc-card"><div class="pulse ${up?'up':'down'}"></div><div class="svc-info"><div class="svc-name">${info.n}</div><div class="svc-desc">${info.d}</div></div><span class="svc-badge ${up?'up':'down'}">${up?'ONLINE':'OFFLINE'}</span></div>`;
+      document.getElementById(info.dot).className = 'pulse ' + (up ? 'up' : 'down');
+      g.innerHTML +=
+        '<div class="svc-card">' +
+          '<div class="pulse ' + (up ? 'up' : 'down') + '"></div>' +
+          '<div class="svc-info">' +
+            '<div class="svc-name">' + info.n + '</div>' +
+            '<div class="svc-desc">' + info.d + '</div>' +
+          '</div>' +
+          '<span class="svc-badge ' + (up ? 'up' : 'down') + '">' + (up ? 'ONLINE' : 'OFFLINE') + '</span>' +
+        '</div>';
     }
   } catch(e) {}
 }
@@ -558,12 +851,14 @@ async function stats() {
       document.getElementById('m-pub').textContent = d.published_today || '0';
       document.getElementById('m-acc').textContent = d.active_accounts || '0';
       document.getElementById('m-scr').textContent = d.scripts_ready || '0';
-      document.getElementById('m-rate').textContent = d.success_rate ? d.success_rate+'%' : '—';
+      document.getElementById('m-rate').textContent = d.success_rate ? d.success_rate + '%' : '—';
     }
   } catch(e) {}
 }
 
-poll(); stats();
+checkToolAccess();
+poll();
+stats();
 setInterval(poll, 30000);
 setInterval(stats, 60000);
 </script>
