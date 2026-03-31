@@ -208,6 +208,22 @@ services:
         condition: service_healthy
 
   # ============================================================
+  # Portal (unified dashboard)
+  # ============================================================
+
+  portal:
+    build: ./services/portal
+    restart: unless-stopped
+    networks:
+      - internal
+      - traefik-net
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.vm-portal.rule=Host(`vm.dev.local`)"
+      - "traefik.http.routers.vm-portal.entrypoints=web"
+      - "traefik.http.services.vm-portal.loadbalancer.server.port=8000"
+
+  # ============================================================
   # Monitoring Layer (Grafana has Web UI → traefik-net)
   # ============================================================
 
@@ -216,6 +232,7 @@ services:
     restart: unless-stopped
     environment:
       - GF_SECURITY_ADMIN_PASSWORD=${GF_SECURITY_ADMIN_PASSWORD}
+      - GF_SECURITY_ALLOW_EMBEDDING=true
     volumes:
       - grafana_data:/var/lib/grafana
     networks:

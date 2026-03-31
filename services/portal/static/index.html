@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AI Video Matrix</title>
+<style>
+:root {
+  --bg-primary: #1a1a2e;
+  --bg-secondary: #16213e;
+  --bg-card: #1e2a3a;
+  --bg-hover: #2a3a4e;
+  --text-primary: #e0e0e0;
+  --text-secondary: #8892a0;
+  --accent: #4fc3f7;
+  --accent-hover: #29b6f6;
+  --success: #66bb6a;
+  --warning: #ffa726;
+  --danger: #ef5350;
+  --border: #2a3a4e;
+  --sidebar-width: 220px;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* ── Top Bar ── */
+.topbar {
+  height: 48px;
+  background: var(--bg-secondary);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  padding: 0 20px;
+  gap: 16px;
+  flex-shrink: 0;
+}
+
+.topbar-title {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--accent);
+  letter-spacing: 0.5px;
+}
+
+.topbar-status {
+  display: flex;
+  gap: 12px;
+  margin-left: auto;
+  font-size: 12px;
+}
+
+.status-dot {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--text-secondary);
+}
+
+.dot.up { background: var(--success); }
+.dot.down { background: var(--danger); }
+
+/* ── Layout ── */
+.layout {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+/* ── Sidebar ── */
+.sidebar {
+  width: var(--sidebar-width);
+  background: var(--bg-secondary);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
+}
+
+.nav-section {
+  padding: 16px 0 8px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  color: var(--text-secondary);
+  padding-left: 16px;
+  letter-spacing: 1px;
+}
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  cursor: pointer;
+  color: var(--text-secondary);
+  font-size: 14px;
+  transition: all 0.15s;
+  border-left: 3px solid transparent;
+}
+
+.nav-item:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.nav-item.active {
+  background: var(--bg-hover);
+  color: var(--accent);
+  border-left-color: var(--accent);
+}
+
+.nav-icon {
+  font-size: 18px;
+  width: 24px;
+  text-align: center;
+}
+
+/* ── Main Content ── */
+.main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.main iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+}
+
+/* ── Overview Dashboard ── */
+.overview {
+  padding: 24px;
+  overflow-y: auto;
+}
+
+.overview h2 {
+  font-size: 20px;
+  font-weight: 600;
+  margin-bottom: 20px;
+  color: var(--text-primary);
+}
+
+.cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 16px;
+  margin-bottom: 24px;
+}
+
+.card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 16px;
+}
+
+.card-label {
+  font-size: 12px;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.card-value {
+  font-size: 28px;
+  font-weight: 700;
+  margin-top: 4px;
+  color: var(--text-primary);
+}
+
+.card-sub {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+
+.service-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 12px;
+}
+
+.service-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.service-card .dot {
+  width: 10px;
+  height: 10px;
+}
+
+.service-name {
+  font-weight: 500;
+  font-size: 14px;
+}
+
+.service-detail {
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+
+.quick-links {
+  margin-top: 24px;
+}
+
+.quick-links h3 {
+  font-size: 14px;
+  color: var(--text-secondary);
+  margin-bottom: 12px;
+}
+
+.link-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 10px;
+}
+
+.link-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 12px 16px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.link-card:hover {
+  border-color: var(--accent);
+  background: var(--bg-hover);
+}
+
+.link-card-title {
+  font-weight: 500;
+  font-size: 14px;
+  color: var(--accent);
+}
+
+.link-card-desc {
+  font-size: 12px;
+  color: var(--text-secondary);
+  margin-top: 4px;
+}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-title">⚡ AI Video Matrix</div>
+  <div class="topbar-status" id="statusBar">
+    <span class="status-dot"><span class="dot" id="dot-planner"></span> Planner</span>
+    <span class="status-dot"><span class="dot" id="dot-mutator"></span> Mutator</span>
+    <span class="status-dot"><span class="dot" id="dot-router"></span> Router</span>
+    <span class="status-dot"><span class="dot" id="dot-publisher"></span> Publisher</span>
+  </div>
+</div>
+
+<div class="layout">
+  <div class="sidebar">
+    <div class="nav-section">Dashboard</div>
+    <div class="nav-item active" data-tab="overview" onclick="switchTab('overview')">
+      <span class="nav-icon">📊</span> Overview
+    </div>
+
+    <div class="nav-section">Tools</div>
+    <div class="nav-item" data-tab="n8n" onclick="switchTab('n8n')">
+      <span class="nav-icon">⚙️</span> Workflow
+    </div>
+    <div class="nav-item" data-tab="grafana" onclick="switchTab('grafana')">
+      <span class="nav-icon">📈</span> Monitoring
+    </div>
+    <div class="nav-item" data-tab="minio" onclick="switchTab('minio')">
+      <span class="nav-icon">💾</span> Storage
+    </div>
+    <div class="nav-item" data-tab="rabbitmq" onclick="switchTab('rabbitmq')">
+      <span class="nav-icon">📬</span> Queue
+    </div>
+  </div>
+
+  <div class="main" id="mainContent">
+    <div class="overview" id="overviewTab">
+      <h2>System Overview</h2>
+
+      <div class="cards">
+        <div class="card">
+          <div class="card-label">Published Today</div>
+          <div class="card-value" id="stat-published">—</div>
+          <div class="card-sub">videos distributed</div>
+        </div>
+        <div class="card">
+          <div class="card-label">Active Accounts</div>
+          <div class="card-value" id="stat-accounts">—</div>
+          <div class="card-sub">across 4 platforms</div>
+        </div>
+        <div class="card">
+          <div class="card-label">Scripts Ready</div>
+          <div class="card-value" id="stat-scripts">—</div>
+          <div class="card-sub">awaiting video generation</div>
+        </div>
+        <div class="card">
+          <div class="card-label">Success Rate</div>
+          <div class="card-value" id="stat-rate">—</div>
+          <div class="card-sub">last 24 hours</div>
+        </div>
+      </div>
+
+      <h3 style="font-size:16px; margin-bottom:12px;">Services</h3>
+      <div class="service-grid" id="serviceGrid"></div>
+
+      <div class="quick-links">
+        <h3>Quick Actions</h3>
+        <div class="link-grid">
+          <div class="link-card" onclick="switchTab('n8n')">
+            <div class="link-card-title">Open Workflow Editor</div>
+            <div class="link-card-desc">Edit and run the video pipeline in n8n</div>
+          </div>
+          <div class="link-card" onclick="switchTab('grafana')">
+            <div class="link-card-title">View Metrics</div>
+            <div class="link-card-desc">Monitor publishing stats and account health</div>
+          </div>
+          <div class="link-card" onclick="switchTab('minio')">
+            <div class="link-card-title">Browse Videos</div>
+            <div class="link-card-desc">View generated and mutated video files</div>
+          </div>
+          <div class="link-card" onclick="window.open('http://vm-rabbitmq.dev.local', '_blank')">
+            <div class="link-card-title">Message Queue</div>
+            <div class="link-card-desc">Monitor publish task queue depth</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+const TABS = {
+  n8n: 'http://vm-n8n.dev.local',
+  grafana: 'http://vm-grafana.dev.local',
+  minio: 'http://vm-minio.dev.local',
+  rabbitmq: 'http://vm-rabbitmq.dev.local',
+};
+
+const SERVICE_MAP = {
+  'content-planner': { label: 'Content Planner', desc: 'LLM script generation', dotId: 'dot-planner' },
+  'video-mutator':   { label: 'Video Mutator',   desc: 'FFmpeg mutation + hash check', dotId: 'dot-mutator' },
+  'content-router':  { label: 'Content Router',  desc: 'Platform isolation routing', dotId: 'dot-router' },
+  'publisher':       { label: 'Publisher',        desc: 'Multi-account Playwright workers', dotId: 'dot-publisher' },
+};
+
+let currentTab = 'overview';
+
+function switchTab(tab) {
+  currentTab = tab;
+
+  document.querySelectorAll('.nav-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.tab === tab);
+  });
+
+  const main = document.getElementById('mainContent');
+
+  if (tab === 'overview') {
+    document.getElementById('overviewTab').style.display = 'block';
+    const iframe = main.querySelector('iframe');
+    if (iframe) iframe.remove();
+  } else {
+    document.getElementById('overviewTab').style.display = 'none';
+    let iframe = main.querySelector('iframe');
+    if (!iframe) {
+      iframe = document.createElement('iframe');
+      main.appendChild(iframe);
+    }
+    iframe.src = TABS[tab];
+  }
+}
+
+async function refreshStatus() {
+  try {
+    const r = await fetch('/api/status');
+    const data = await r.json();
+
+    const grid = document.getElementById('serviceGrid');
+    grid.innerHTML = '';
+
+    for (const [key, info] of Object.entries(SERVICE_MAP)) {
+      const svc = data[key] || { status: 'down' };
+      const isUp = svc.status === 'up';
+
+      const dot = document.getElementById(info.dotId);
+      if (dot) {
+        dot.className = 'dot ' + (isUp ? 'up' : 'down');
+      }
+
+      grid.innerHTML += '<div class="service-card">' +
+        '<span class="dot ' + (isUp ? 'up' : 'down') + '"></span>' +
+        '<div>' +
+          '<div class="service-name">' + info.label + '</div>' +
+          '<div class="service-detail">' + info.desc + ' — ' + (isUp ? 'Running' : 'Down') + '</div>' +
+        '</div>' +
+      '</div>';
+    }
+  } catch (e) {
+    console.error('Status fetch failed:', e);
+  }
+}
+
+async function refreshStats() {
+  try {
+    const r = await fetch('/api/stats');
+    const data = await r.json();
+    if (!data.error) {
+      document.getElementById('stat-published').textContent = data.published_today || '0';
+      document.getElementById('stat-accounts').textContent = data.active_accounts || '0';
+      document.getElementById('stat-scripts').textContent = data.scripts_ready || '0';
+      document.getElementById('stat-rate').textContent = data.success_rate ? data.success_rate + '%' : '—';
+    }
+  } catch (e) {}
+}
+
+refreshStatus();
+refreshStats();
+setInterval(refreshStatus, 30000);
+setInterval(refreshStats, 60000);
+</script>
+
+</body>
+</html>
