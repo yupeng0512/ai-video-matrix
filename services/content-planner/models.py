@@ -64,7 +64,7 @@ class ScriptVariant(Base):
     product_id = Column(UUID(as_uuid=True), ForeignKey("products.id"), nullable=False)
     hook = Column(PgEnum(HookType, name="hook_type", create_type=False), nullable=False)
     style = Column(PgEnum(StyleType, name="style_type", create_type=False), nullable=False)
-    duration = Column(PgEnum(DurationType, name="duration_type", create_type=False), nullable=False)
+    duration = Column(PgEnum(DurationType, name="duration_type", create_type=False, values_callable=lambda e: [x.value for x in e]), nullable=False)
     prompt_text = Column(Text, nullable=False)
     visual_desc = Column(Text)
     tts_text = Column(Text)
