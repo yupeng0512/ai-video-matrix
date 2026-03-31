@@ -3,135 +3,246 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI Video Matrix</title>
+<title>AI Video Matrix — Mission Control</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
 <style>
 :root {
-  --bg-primary: #1a1a2e;
-  --bg-secondary: #16213e;
-  --bg-card: #1e2a3a;
-  --bg-hover: #2a3a4e;
-  --text-primary: #e0e0e0;
-  --text-secondary: #8892a0;
-  --accent: #4fc3f7;
-  --accent-hover: #29b6f6;
-  --success: #66bb6a;
-  --warning: #ffa726;
-  --danger: #ef5350;
-  --border: #2a3a4e;
-  --sidebar-width: 220px;
+  --bg-base: #0f1117;
+  --bg-surface: #161b22;
+  --bg-elevated: #1c2333;
+  --bg-glass: rgba(22, 27, 34, 0.85);
+  --border: rgba(255,255,255,0.06);
+  --border-glow: rgba(0, 212, 255, 0.15);
+  --text-1: #e6edf3;
+  --text-2: #8b949e;
+  --text-3: #484f58;
+  --accent: #00d4ff;
+  --accent-dim: rgba(0, 212, 255, 0.1);
+  --success: #3fb950;
+  --success-glow: rgba(63, 185, 80, 0.25);
+  --warning: #d29922;
+  --danger: #f85149;
+  --danger-glow: rgba(248, 81, 73, 0.25);
+  --sidebar-w: 200px;
+  --topbar-h: 52px;
+  --font-body: 'DM Sans', -apple-system, sans-serif;
+  --font-mono: 'JetBrains Mono', 'SF Mono', monospace;
 }
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: var(--bg-primary);
-  color: var(--text-primary);
+  font-family: var(--font-body);
+  background: var(--bg-base);
+  color: var(--text-1);
   height: 100vh;
   display: flex;
   flex-direction: column;
   overflow: hidden;
 }
 
-/* ── Top Bar ── */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
+  background-size: 48px 48px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── Topbar ── */
 .topbar {
-  height: 48px;
-  background: var(--bg-secondary);
+  height: var(--topbar-h);
+  background: var(--bg-surface);
   border-bottom: 1px solid var(--border);
   display: flex;
   align-items: center;
   padding: 0 20px;
   gap: 16px;
   flex-shrink: 0;
+  position: relative;
+  z-index: 10;
+}
+
+.topbar::after {
+  content: '';
+  position: absolute;
+  bottom: -1px;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, var(--accent) 30%, var(--accent) 70%, transparent);
+  opacity: 0.3;
+}
+
+.topbar-brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.topbar-logo {
+  width: 28px;
+  height: 28px;
+  background: linear-gradient(135deg, var(--accent), #0088cc);
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  font-weight: 700;
+  color: #fff;
+  box-shadow: 0 0 12px rgba(0, 212, 255, 0.3);
 }
 
 .topbar-title {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 600;
+  color: var(--text-1);
+  letter-spacing: -0.3px;
+}
+
+.topbar-badge {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 2px 6px;
+  background: var(--accent-dim);
   color: var(--accent);
-  letter-spacing: 0.5px;
+  border-radius: 4px;
+  border: 1px solid rgba(0, 212, 255, 0.2);
 }
 
 .topbar-status {
   display: flex;
-  gap: 12px;
+  gap: 16px;
   margin-left: auto;
   font-size: 12px;
+  font-family: var(--font-mono);
 }
 
-.status-dot {
-  display: inline-flex;
+.status-item {
+  display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
+  color: var(--text-2);
 }
 
-.dot {
+.pulse {
   width: 8px;
   height: 8px;
   border-radius: 50%;
-  background: var(--text-secondary);
+  position: relative;
 }
 
-.dot.up { background: var(--success); }
-.dot.down { background: var(--danger); }
+.pulse.up {
+  background: var(--success);
+  box-shadow: 0 0 6px var(--success-glow);
+}
+
+.pulse.up::after {
+  content: '';
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  border: 1px solid var(--success);
+  opacity: 0;
+  animation: pulse-ring 2s ease-out infinite;
+}
+
+.pulse.down {
+  background: var(--danger);
+  box-shadow: 0 0 6px var(--danger-glow);
+}
+
+@keyframes pulse-ring {
+  0% { opacity: 0.6; transform: scale(0.8); }
+  100% { opacity: 0; transform: scale(1.8); }
+}
 
 /* ── Layout ── */
 .layout {
   display: flex;
   flex: 1;
   overflow: hidden;
+  position: relative;
+  z-index: 1;
 }
 
 /* ── Sidebar ── */
 .sidebar {
-  width: var(--sidebar-width);
-  background: var(--bg-secondary);
+  width: var(--sidebar-w);
+  background: var(--bg-glass);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
   border-right: 1px solid var(--border);
   display: flex;
   flex-direction: column;
   flex-shrink: 0;
+  padding-top: 8px;
 }
 
-.nav-section {
-  padding: 16px 0 8px;
-  font-size: 11px;
+.nav-group {
+  padding: 12px 12px 4px;
+  font-size: 10px;
   font-weight: 600;
   text-transform: uppercase;
-  color: var(--text-secondary);
-  padding-left: 16px;
-  letter-spacing: 1px;
+  color: var(--text-3);
+  letter-spacing: 1.5px;
 }
 
 .nav-item {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 16px;
+  padding: 9px 12px;
+  margin: 1px 8px;
   cursor: pointer;
-  color: var(--text-secondary);
-  font-size: 14px;
-  transition: all 0.15s;
-  border-left: 3px solid transparent;
+  color: var(--text-2);
+  font-size: 13px;
+  font-weight: 500;
+  transition: all 0.15s ease;
+  border-radius: 6px;
+  position: relative;
 }
 
 .nav-item:hover {
-  background: var(--bg-hover);
-  color: var(--text-primary);
+  background: rgba(255,255,255,0.04);
+  color: var(--text-1);
 }
 
 .nav-item.active {
-  background: var(--bg-hover);
+  background: var(--accent-dim);
   color: var(--accent);
-  border-left-color: var(--accent);
 }
 
-.nav-icon {
-  font-size: 18px;
-  width: 24px;
+.nav-item.active::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 6px;
+  bottom: 6px;
+  width: 3px;
+  background: var(--accent);
+  border-radius: 0 2px 2px 0;
+}
+
+.nav-icon { font-size: 16px; width: 22px; text-align: center; }
+
+.sidebar-footer {
+  margin-top: auto;
+  padding: 12px;
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--text-3);
+  font-family: var(--font-mono);
   text-align: center;
 }
 
-/* ── Main Content ── */
+/* ── Main ── */
 .main {
   flex: 1;
   display: flex;
@@ -143,212 +254,263 @@ body {
   width: 100%;
   height: 100%;
   border: none;
+  background: var(--bg-base);
 }
 
-/* ── Overview Dashboard ── */
+/* ── Overview ── */
 .overview {
-  padding: 24px;
+  padding: 28px 32px;
   overflow-y: auto;
 }
 
-.overview h2 {
-  font-size: 20px;
-  font-weight: 600;
-  margin-bottom: 20px;
-  color: var(--text-primary);
-}
-
-.cards {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 16px;
+.overview-header {
   margin-bottom: 24px;
 }
 
-.card {
-  background: var(--bg-card);
-  border: 1px solid var(--border);
-  border-radius: 8px;
-  padding: 16px;
+.overview-header h2 {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  margin-bottom: 4px;
 }
 
-.card-label {
+.overview-header p {
+  font-size: 13px;
+  color: var(--text-2);
+}
+
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 14px;
+  margin-bottom: 28px;
+}
+
+.metric-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 18px;
+  transition: border-color 0.2s;
+}
+
+.metric-card:hover {
+  border-color: var(--border-glow);
+}
+
+.metric-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.8px;
+  color: var(--text-3);
+  margin-bottom: 8px;
+}
+
+.metric-value {
+  font-family: var(--font-mono);
+  font-size: 32px;
+  font-weight: 600;
+  color: var(--text-1);
+  line-height: 1;
+}
+
+.metric-sub {
   font-size: 12px;
-  color: var(--text-secondary);
+  color: var(--text-2);
+  margin-top: 6px;
+}
+
+.section-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-2);
+  margin-bottom: 14px;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 }
 
-.card-value {
-  font-size: 28px;
-  font-weight: 700;
-  margin-top: 4px;
-  color: var(--text-primary);
-}
-
-.card-sub {
-  font-size: 12px;
-  color: var(--text-secondary);
-  margin-top: 4px;
-}
-
-.service-grid {
+.svc-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
+  margin-bottom: 28px;
 }
 
-.service-card {
-  background: var(--bg-card);
+.svc-card {
+  background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: 8px;
   padding: 14px 16px;
   display: flex;
   align-items: center;
   gap: 12px;
+  transition: border-color 0.2s;
 }
 
-.service-card .dot {
-  width: 10px;
-  height: 10px;
+.svc-card:hover { border-color: var(--border-glow); }
+
+.svc-info { flex: 1; }
+
+.svc-name {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 2px;
 }
 
-.service-name {
+.svc-desc {
+  font-size: 11px;
+  color: var(--text-3);
+}
+
+.svc-badge {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 4px;
   font-weight: 500;
-  font-size: 14px;
 }
 
-.service-detail {
-  font-size: 12px;
-  color: var(--text-secondary);
+.svc-badge.up {
+  background: rgba(63, 185, 80, 0.1);
+  color: var(--success);
+  border: 1px solid rgba(63, 185, 80, 0.2);
 }
 
-.quick-links {
-  margin-top: 24px;
+.svc-badge.down {
+  background: rgba(248, 81, 73, 0.1);
+  color: var(--danger);
+  border: 1px solid rgba(248, 81, 73, 0.2);
 }
 
-.quick-links h3 {
-  font-size: 14px;
-  color: var(--text-secondary);
-  margin-bottom: 12px;
-}
-
-.link-grid {
+.actions {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  grid-template-columns: repeat(2, 1fr);
   gap: 10px;
 }
 
-.link-card {
-  background: var(--bg-card);
+.action-card {
+  background: var(--bg-surface);
   border: 1px solid var(--border);
   border-radius: 8px;
-  padding: 12px 16px;
+  padding: 16px;
   cursor: pointer;
-  transition: all 0.15s;
+  transition: all 0.2s;
 }
 
-.link-card:hover {
+.action-card:hover {
   border-color: var(--accent);
-  background: var(--bg-hover);
+  background: var(--bg-elevated);
+  transform: translateY(-1px);
 }
 
-.link-card-title {
-  font-weight: 500;
-  font-size: 14px;
-  color: var(--accent);
+.action-icon { font-size: 20px; margin-bottom: 8px; }
+
+.action-title {
+  font-size: 13px;
+  font-weight: 600;
+  margin-bottom: 4px;
 }
 
-.link-card-desc {
-  font-size: 12px;
-  color: var(--text-secondary);
-  margin-top: 4px;
+.action-desc {
+  font-size: 11px;
+  color: var(--text-3);
+  line-height: 1.4;
 }
 </style>
 </head>
 <body>
 
 <div class="topbar">
-  <div class="topbar-title">⚡ AI Video Matrix</div>
+  <div class="topbar-brand">
+    <div class="topbar-logo">VM</div>
+    <span class="topbar-title">AI Video Matrix</span>
+    <span class="topbar-badge">PHASE 1</span>
+  </div>
   <div class="topbar-status" id="statusBar">
-    <span class="status-dot"><span class="dot" id="dot-planner"></span> Planner</span>
-    <span class="status-dot"><span class="dot" id="dot-mutator"></span> Mutator</span>
-    <span class="status-dot"><span class="dot" id="dot-router"></span> Router</span>
-    <span class="status-dot"><span class="dot" id="dot-publisher"></span> Publisher</span>
+    <span class="status-item"><span class="pulse" id="d-planner"></span>Planner</span>
+    <span class="status-item"><span class="pulse" id="d-mutator"></span>Mutator</span>
+    <span class="status-item"><span class="pulse" id="d-router"></span>Router</span>
+    <span class="status-item"><span class="pulse" id="d-publisher"></span>Publisher</span>
   </div>
 </div>
 
 <div class="layout">
   <div class="sidebar">
-    <div class="nav-section">Dashboard</div>
-    <div class="nav-item active" data-tab="overview" onclick="switchTab('overview')">
-      <span class="nav-icon">📊</span> Overview
+    <div class="nav-group">Dashboard</div>
+    <div class="nav-item active" data-tab="overview" onclick="go('overview')">
+      <span class="nav-icon">◉</span>Overview
     </div>
-
-    <div class="nav-section">Tools</div>
-    <div class="nav-item" data-tab="n8n" onclick="switchTab('n8n')">
-      <span class="nav-icon">⚙️</span> Workflow
+    <div class="nav-group">Tools</div>
+    <div class="nav-item" data-tab="n8n" onclick="go('n8n')">
+      <span class="nav-icon">⬡</span>Workflow
     </div>
-    <div class="nav-item" data-tab="grafana" onclick="switchTab('grafana')">
-      <span class="nav-icon">📈</span> Monitoring
+    <div class="nav-item" data-tab="grafana" onclick="go('grafana')">
+      <span class="nav-icon">◧</span>Monitoring
     </div>
-    <div class="nav-item" data-tab="minio" onclick="switchTab('minio')">
-      <span class="nav-icon">💾</span> Storage
+    <div class="nav-item" data-tab="minio" onclick="go('minio')">
+      <span class="nav-icon">▤</span>Storage
     </div>
-    <div class="nav-item" data-tab="rabbitmq" onclick="switchTab('rabbitmq')">
-      <span class="nav-icon">📬</span> Queue
+    <div class="nav-item" data-tab="rabbitmq" onclick="go('rabbitmq')">
+      <span class="nav-icon">⇶</span>Queue
     </div>
+    <div class="sidebar-footer">v0.1.0 · Phase 1 MVP</div>
   </div>
 
-  <div class="main" id="mainContent">
-    <div class="overview" id="overviewTab">
-      <h2>System Overview</h2>
+  <div class="main" id="main">
+    <div class="overview" id="ov">
+      <div class="overview-header">
+        <h2>Mission Control</h2>
+        <p>AI Video Matrix operations dashboard — real-time system status and controls</p>
+      </div>
 
-      <div class="cards">
-        <div class="card">
-          <div class="card-label">Published Today</div>
-          <div class="card-value" id="stat-published">—</div>
-          <div class="card-sub">videos distributed</div>
+      <div class="metrics">
+        <div class="metric-card">
+          <div class="metric-label">Published Today</div>
+          <div class="metric-value" id="m-pub">0</div>
+          <div class="metric-sub">videos distributed</div>
         </div>
-        <div class="card">
-          <div class="card-label">Active Accounts</div>
-          <div class="card-value" id="stat-accounts">—</div>
-          <div class="card-sub">across 4 platforms</div>
+        <div class="metric-card">
+          <div class="metric-label">Active Accounts</div>
+          <div class="metric-value" id="m-acc">0</div>
+          <div class="metric-sub">across 4 platforms</div>
         </div>
-        <div class="card">
-          <div class="card-label">Scripts Ready</div>
-          <div class="card-value" id="stat-scripts">—</div>
-          <div class="card-sub">awaiting video generation</div>
+        <div class="metric-card">
+          <div class="metric-label">Scripts Ready</div>
+          <div class="metric-value" id="m-scr">0</div>
+          <div class="metric-sub">awaiting generation</div>
         </div>
-        <div class="card">
-          <div class="card-label">Success Rate</div>
-          <div class="card-value" id="stat-rate">—</div>
-          <div class="card-sub">last 24 hours</div>
+        <div class="metric-card">
+          <div class="metric-label">Success Rate</div>
+          <div class="metric-value" id="m-rate">—</div>
+          <div class="metric-sub">last 24 hours</div>
         </div>
       </div>
 
-      <h3 style="font-size:16px; margin-bottom:12px;">Services</h3>
-      <div class="service-grid" id="serviceGrid"></div>
+      <div class="section-title">Service Health</div>
+      <div class="svc-grid" id="svcGrid"></div>
 
-      <div class="quick-links">
-        <h3>Quick Actions</h3>
-        <div class="link-grid">
-          <div class="link-card" onclick="switchTab('n8n')">
-            <div class="link-card-title">Open Workflow Editor</div>
-            <div class="link-card-desc">Edit and run the video pipeline in n8n</div>
-          </div>
-          <div class="link-card" onclick="switchTab('grafana')">
-            <div class="link-card-title">View Metrics</div>
-            <div class="link-card-desc">Monitor publishing stats and account health</div>
-          </div>
-          <div class="link-card" onclick="switchTab('minio')">
-            <div class="link-card-title">Browse Videos</div>
-            <div class="link-card-desc">View generated and mutated video files</div>
-          </div>
-          <div class="link-card" onclick="window.open('http://vm-rabbitmq.dev.local', '_blank')">
-            <div class="link-card-title">Message Queue</div>
-            <div class="link-card-desc">Monitor publish task queue depth</div>
-          </div>
+      <div class="section-title">Quick Actions</div>
+      <div class="actions">
+        <div class="action-card" onclick="go('n8n')">
+          <div class="action-icon">⬡</div>
+          <div class="action-title">Open Workflow</div>
+          <div class="action-desc">Edit and run the video generation pipeline</div>
+        </div>
+        <div class="action-card" onclick="go('grafana')">
+          <div class="action-icon">◧</div>
+          <div class="action-title">View Metrics</div>
+          <div class="action-desc">Publishing stats and account health trends</div>
+        </div>
+        <div class="action-card" onclick="go('minio')">
+          <div class="action-icon">▤</div>
+          <div class="action-title">Browse Videos</div>
+          <div class="action-desc">View generated and mutated video files</div>
+        </div>
+        <div class="action-card" onclick="go('rabbitmq')">
+          <div class="action-icon">⇶</div>
+          <div class="action-title">Task Queue</div>
+          <div class="action-desc">Monitor publish queue depth and throughput</div>
         </div>
       </div>
     </div>
@@ -356,94 +518,54 @@ body {
 </div>
 
 <script>
-const TABS = {
-  n8n: 'http://vm-n8n.dev.local',
-  grafana: 'http://vm-grafana.dev.local',
-  minio: 'http://vm-minio.dev.local',
-  rabbitmq: 'http://vm-rabbitmq.dev.local',
+const TABS = { n8n:'/proxy/n8n/', grafana:'/proxy/grafana/', minio:'/proxy/minio/', rabbitmq:'/proxy/rabbitmq/' };
+const SVCS = {
+  'content-planner': { n:'Content Planner', d:'LLM script generation', dot:'d-planner' },
+  'video-mutator':   { n:'Video Mutator',   d:'FFmpeg mutation engine', dot:'d-mutator' },
+  'content-router':  { n:'Content Router',  d:'Platform isolation routing', dot:'d-router' },
+  'publisher':       { n:'Publisher',        d:'Multi-account Playwright workers', dot:'d-publisher' },
 };
 
-const SERVICE_MAP = {
-  'content-planner': { label: 'Content Planner', desc: 'LLM script generation', dotId: 'dot-planner' },
-  'video-mutator':   { label: 'Video Mutator',   desc: 'FFmpeg mutation + hash check', dotId: 'dot-mutator' },
-  'content-router':  { label: 'Content Router',  desc: 'Platform isolation routing', dotId: 'dot-router' },
-  'publisher':       { label: 'Publisher',        desc: 'Multi-account Playwright workers', dotId: 'dot-publisher' },
-};
-
-let currentTab = 'overview';
-
-function switchTab(tab) {
-  currentTab = tab;
-
-  document.querySelectorAll('.nav-item').forEach(el => {
-    el.classList.toggle('active', el.dataset.tab === tab);
-  });
-
-  const main = document.getElementById('mainContent');
-
+function go(tab) {
+  document.querySelectorAll('.nav-item').forEach(e => e.classList.toggle('active', e.dataset.tab === tab));
+  const m = document.getElementById('main'), ov = document.getElementById('ov');
   if (tab === 'overview') {
-    document.getElementById('overviewTab').style.display = 'block';
-    const iframe = main.querySelector('iframe');
-    if (iframe) iframe.remove();
+    ov.style.display = ''; const f = m.querySelector('iframe'); if (f) f.remove();
   } else {
-    document.getElementById('overviewTab').style.display = 'none';
-    let iframe = main.querySelector('iframe');
-    if (!iframe) {
-      iframe = document.createElement('iframe');
-      main.appendChild(iframe);
-    }
-    iframe.src = TABS[tab];
+    ov.style.display = 'none';
+    let f = m.querySelector('iframe');
+    if (!f) { f = document.createElement('iframe'); m.appendChild(f); }
+    f.src = TABS[tab];
   }
 }
 
-async function refreshStatus() {
+async function poll() {
   try {
-    const r = await fetch('/api/status');
-    const data = await r.json();
-
-    const grid = document.getElementById('serviceGrid');
-    grid.innerHTML = '';
-
-    for (const [key, info] of Object.entries(SERVICE_MAP)) {
-      const svc = data[key] || { status: 'down' };
-      const isUp = svc.status === 'up';
-
-      const dot = document.getElementById(info.dotId);
-      if (dot) {
-        dot.className = 'dot ' + (isUp ? 'up' : 'down');
-      }
-
-      grid.innerHTML += '<div class="service-card">' +
-        '<span class="dot ' + (isUp ? 'up' : 'down') + '"></span>' +
-        '<div>' +
-          '<div class="service-name">' + info.label + '</div>' +
-          '<div class="service-detail">' + info.desc + ' — ' + (isUp ? 'Running' : 'Down') + '</div>' +
-        '</div>' +
-      '</div>';
+    const r = await fetch('/api/status'), d = await r.json();
+    const g = document.getElementById('svcGrid'); g.innerHTML = '';
+    for (const [k, info] of Object.entries(SVCS)) {
+      const up = d[k]?.status === 'up';
+      document.getElementById(info.dot).className = `pulse ${up ? 'up' : 'down'}`;
+      g.innerHTML += `<div class="svc-card"><div class="pulse ${up?'up':'down'}"></div><div class="svc-info"><div class="svc-name">${info.n}</div><div class="svc-desc">${info.d}</div></div><span class="svc-badge ${up?'up':'down'}">${up?'ONLINE':'OFFLINE'}</span></div>`;
     }
-  } catch (e) {
-    console.error('Status fetch failed:', e);
-  }
+  } catch(e) {}
 }
 
-async function refreshStats() {
+async function stats() {
   try {
-    const r = await fetch('/api/stats');
-    const data = await r.json();
-    if (!data.error) {
-      document.getElementById('stat-published').textContent = data.published_today || '0';
-      document.getElementById('stat-accounts').textContent = data.active_accounts || '0';
-      document.getElementById('stat-scripts').textContent = data.scripts_ready || '0';
-      document.getElementById('stat-rate').textContent = data.success_rate ? data.success_rate + '%' : '—';
+    const r = await fetch('/api/stats'), d = await r.json();
+    if (!d.error) {
+      document.getElementById('m-pub').textContent = d.published_today || '0';
+      document.getElementById('m-acc').textContent = d.active_accounts || '0';
+      document.getElementById('m-scr').textContent = d.scripts_ready || '0';
+      document.getElementById('m-rate').textContent = d.success_rate ? d.success_rate+'%' : '—';
     }
-  } catch (e) {}
+  } catch(e) {}
 }
 
-refreshStatus();
-refreshStats();
-setInterval(refreshStatus, 30000);
-setInterval(refreshStats, 60000);
+poll(); stats();
+setInterval(poll, 30000);
+setInterval(stats, 60000);
 </script>
-
 </body>
 </html>
