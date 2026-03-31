@@ -58,6 +58,21 @@ async def tool_urls():
     return results
 
 
+@app.get("/api/server-info")
+async def server_info():
+    """Return the server IP and managed domains for hosts configuration."""
+    return {
+        "server_ip": os.environ.get("SERVER_IP", "YOUR_SERVER_IP"),
+        "domains": [
+            "vm.dev.local",
+            "vm-n8n.dev.local",
+            "vm-grafana.dev.local",
+            "vm-minio.dev.local",
+            "vm-rabbitmq.dev.local",
+        ],
+    }
+
+
 @app.get("/", response_class=HTMLResponse)
 async def index():
     html_path = os.path.join(os.path.dirname(__file__), "static", "index.html")

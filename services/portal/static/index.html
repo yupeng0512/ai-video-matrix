@@ -572,6 +572,107 @@ body::before {
   padding: 4px 12px;
   margin-top: 8px;
 }
+
+/* ── Setup Overlay (first-time) ── */
+.setup-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: none;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.setup-overlay.visible { display: flex; }
+
+.setup-overlay-card {
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-glow);
+  border-radius: 14px;
+  padding: 32px 36px;
+  max-width: 600px;
+  width: 90%;
+  box-shadow: 0 0 60px rgba(0, 212, 255, 0.12), 0 20px 40px rgba(0,0,0,0.5);
+}
+
+.setup-overlay-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+
+.setup-overlay-header span:first-child {
+  font-size: 28px;
+}
+
+.setup-overlay-header h3 {
+  font-size: 18px;
+  font-weight: 700;
+  color: var(--text-1);
+}
+
+.setup-overlay-text {
+  font-size: 13px;
+  color: var(--text-2);
+  line-height: 1.7;
+  margin-bottom: 16px;
+}
+
+.setup-overlay-code {
+  position: relative;
+  background: rgba(0,0,0,0.4);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-bottom: 20px;
+}
+
+.setup-overlay-code pre {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  color: var(--accent);
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-break: break-all;
+  user-select: all;
+}
+
+.setup-overlay-code .copy-btn {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  padding: 3px 10px;
+  background: var(--bg-surface);
+  color: var(--text-2);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.15s;
+}
+
+.setup-overlay-code .copy-btn:hover {
+  color: var(--text-1);
+  border-color: var(--accent);
+}
+
+.setup-overlay-footer {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.setup-overlay-footer .btn { font-size: 13px; padding: 10px 28px; }
+
+.setup-overlay-hint {
+  font-size: 11px;
+  color: var(--text-3);
+}
 </style>
 </head>
 <body>
@@ -701,6 +802,30 @@ body::before {
   </div>
 </div>
 
+<div class="setup-overlay" id="setupOverlay">
+  <div class="setup-overlay-card">
+    <div class="setup-overlay-header">
+      <span>🚀</span>
+      <h3>Welcome — One-time Setup</h3>
+    </div>
+    <div class="setup-overlay-text">
+      AI Video Matrix uses subdomain routing for each tool panel. Add this single line to
+      your <strong>/etc/hosts</strong> file so your browser can reach all services:
+    </div>
+    <div class="setup-overlay-code">
+      <pre id="overlayHostsLine">Loading...</pre>
+      <button class="copy-btn" onclick="copyHosts()">Copy</button>
+    </div>
+    <div class="setup-overlay-text" style="margin-bottom:0; font-size:12px; color:var(--text-3);">
+      On macOS/Linux: <code>sudo nano /etc/hosts</code> &nbsp;·&nbsp; On Windows: edit <code>C:\Windows\System32\drivers\etc\hosts</code> as admin
+    </div>
+    <div class="setup-overlay-footer" style="margin-top:20px">
+      <span class="setup-overlay-hint">You can re-check this in the Overview banner.</span>
+      <button class="btn btn-primary" onclick="dismissOverlay()">Got it, continue →</button>
+    </div>
+  </div>
+</div>
+
 <script>
 const TABS = {
   n8n:      'http://vm-n8n.dev.local',
@@ -782,12 +907,12 @@ function showFallback(tab) {
   document.getElementById('fallbackUrl').textContent = url;
   document.getElementById('fallbackOpen').href = url;
 
-  const serverIp = window.location.hostname === 'localhost' ? '127.0.0.1' : window.location.hostname;
+  const ip = _serverIp || 'YOUR_SERVER_IP';
   document.getElementById('fallbackDesc').innerHTML =
     'This service is running internally but your browser cannot reach <strong>' + url + '</strong>.<br>' +
     'Add the following to your <code>/etc/hosts</code> file:<br><br>' +
     '<code style="background:rgba(0,0,0,.3);padding:4px 8px;border-radius:4px">' +
-    serverIp + '  ' + new URL(url).hostname + '</code>';
+    ip + '  ' + new URL(url).hostname + '</code>';
 
   fb.classList.add('visible');
   const f = document.getElementById('main').querySelector('iframe');
@@ -805,21 +930,50 @@ function dismissSetupBanner() {
   try { sessionStorage.setItem('setup-banner-dismissed', '1'); } catch(e) {}
 }
 
+function dismissOverlay() {
+  document.getElementById('setupOverlay').classList.remove('visible');
+  dismissSetupBanner();
+}
+
+function copyHosts() {
+  const line = document.getElementById('overlayHostsLine').textContent;
+  navigator.clipboard.writeText(line).then(() => {
+    const btn = document.querySelector('.setup-overlay-code .copy-btn');
+    btn.textContent = 'Copied!';
+    setTimeout(() => { btn.textContent = 'Copy'; }, 1500);
+  }).catch(() => {});
+}
+
+let _serverIp = null;
+
+async function loadServerInfo() {
+  try {
+    const r = await fetch('/api/server-info');
+    const info = await r.json();
+    _serverIp = info.server_ip;
+    return info;
+  } catch(e) { return null; }
+}
+
 async function checkToolAccess() {
   try {
-    const r = await fetch('/api/tool-urls');
-    const tools = await r.json();
+    const [, toolsResp] = await Promise.all([loadServerInfo(), fetch('/api/tool-urls')]);
+    const tools = await toolsResp.json();
     for (const [k, info] of Object.entries(tools)) {
       if (TABS[k]) TABS[k] = info.url;
     }
 
     const dismissed = sessionStorage.getItem('setup-banner-dismissed');
     if (!dismissed) {
-      const serverIp = window.location.hostname === 'localhost' ? '127.0.0.1' : window.location.hostname;
-      const hosts = Object.values(tools).map(t => serverIp + '  ' + new URL(t.url).hostname).join('\n');
+      const ip = _serverIp || 'YOUR_SERVER_IP';
+      const domains = Object.values(tools).map(t => new URL(t.url).hostname);
       const snippet = document.getElementById('hostsSnippet');
-      snippet.textContent = '# AI Video Matrix — add to /etc/hosts\n' + hosts;
+      snippet.textContent = '# AI Video Matrix — add to /etc/hosts\n' + ip + '  ' + domains.join(' ');
       document.getElementById('setupBanner').classList.add('visible');
+
+      const hostsLine = ip + '  ' + domains.join(' ');
+      document.getElementById('overlayHostsLine').textContent = hostsLine;
+      document.getElementById('setupOverlay').classList.add('visible');
     }
   } catch(e) {}
 }

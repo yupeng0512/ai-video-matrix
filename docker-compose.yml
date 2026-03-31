@@ -75,6 +75,9 @@ services:
       - "traefik.http.routers.vm-minio.rule=Host(`vm-minio.dev.local`)"
       - "traefik.http.routers.vm-minio.entrypoints=web"
       - "traefik.http.services.vm-minio.loadbalancer.server.port=9001"
+      - "traefik.http.middlewares.minio-headers.headers.customResponseHeaders.X-Frame-Options="
+      - "traefik.http.middlewares.minio-headers.headers.customResponseHeaders.Content-Security-Policy="
+      - "traefik.http.routers.vm-minio.middlewares=minio-headers"
     healthcheck:
       test: ["CMD", "mc", "ready", "local"]
       interval: 10s
@@ -214,6 +217,8 @@ services:
   portal:
     build: ./services/portal
     restart: unless-stopped
+    environment:
+      - SERVER_IP=9.135.86.144
     networks:
       - internal
       - traefik-net
