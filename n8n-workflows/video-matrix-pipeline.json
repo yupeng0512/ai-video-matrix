@@ -1,203 +1,349 @@
-{
-  "name": "AI Video Matrix Pipeline",
-  "nodes": [
+[
     {
-      "parameters": {
-        "rule": {
-          "interval": [{"field": "hours", "hoursInterval": 4}]
-        }
-      },
-      "name": "Schedule Trigger",
-      "type": "n8n-nodes-base.scheduleTrigger",
-      "position": [250, 300],
-      "typeVersion": 1
-    },
-    {
-      "parameters": {
-        "url": "http://content-planner:8000/products",
-        "method": "GET",
-        "responseFormat": "json"
-      },
-      "name": "Get Products",
-      "type": "n8n-nodes-base.httpRequest",
-      "position": [450, 300],
-      "typeVersion": 1
-    },
-    {
-      "parameters": {
-        "url": "http://content-planner:8000/scripts/generate-batch",
-        "method": "POST",
-        "body": {
-          "product_id": "={{$json.id}}",
-          "count": 5
-        },
-        "responseFormat": "json"
-      },
-      "name": "Generate Script Variants",
-      "type": "n8n-nodes-base.httpRequest",
-      "position": [650, 300],
-      "typeVersion": 1
-    },
-    {
-      "parameters": {
-        "url": "={{$env.KLING_BASE_URL || 'https://api.klingai.com'}}/v1/videos/generations",
-        "method": "POST",
-        "headers": {
-          "Authorization": "Bearer {{$env.KLING_API_KEY}}"
-        },
-        "body": {
-          "prompt": "={{$json.visual_desc}}",
-          "duration": 5,
-          "aspect_ratio": "9:16"
-        },
-        "responseFormat": "json"
-      },
-      "name": "Generate Video (API)",
-      "type": "n8n-nodes-base.httpRequest",
-      "position": [850, 300],
-      "typeVersion": 1
-    },
-    {
-      "parameters": {
-        "amount": 30,
-        "unit": "seconds"
-      },
-      "name": "Wait for Generation",
-      "type": "n8n-nodes-base.wait",
-      "position": [1050, 300],
-      "typeVersion": 1
-    },
-    {
-      "parameters": {
-        "url": "http://video-mutator:8000/mutate",
-        "method": "POST",
-        "body": {
-          "minio_key": "={{$json.minio_key}}",
-          "variant_count": 5,
-          "intensity": "medium"
-        },
-        "responseFormat": "json"
-      },
-      "name": "Create Variants",
-      "type": "n8n-nodes-base.httpRequest",
-      "position": [1250, 300],
-      "typeVersion": 1
-    },
-    {
-      "parameters": {
-        "url": "http://video-mutator:8000/hash",
-        "method": "POST",
-        "body": {
-          "minio_key": "={{$json.minio_key}}",
-          "existing_hashes": "={{$json.existing_hashes || []}}",
-          "threshold": 0.70
-        },
-        "responseFormat": "json"
-      },
-      "name": "Check Similarity",
-      "type": "n8n-nodes-base.httpRequest",
-      "position": [1450, 300],
-      "typeVersion": 1
-    },
-    {
-      "parameters": {
-        "conditions": {
-          "boolean": [
+        "updatedAt": "2026-03-31T06:38:55.558Z",
+        "createdAt": "2026-03-31T06:38:55.558Z",
+        "id": "a17d4cf2-73e9-478f-8ee5-c8e61da35eef",
+        "name": "AI Video Matrix Pipeline",
+        "description": null,
+        "active": false,
+        "isArchived": false,
+        "nodes": [
             {
-              "value1": "={{$json.is_unique}}",
-              "value2": true
+                "parameters": {
+                    "rule": {
+                        "interval": [
+                            {
+                                "field": "hours",
+                                "hoursInterval": 4
+                            }
+                        ]
+                    }
+                },
+                "name": "Schedule Trigger",
+                "type": "n8n-nodes-base.scheduleTrigger",
+                "position": [
+                    250,
+                    300
+                ],
+                "typeVersion": 1,
+                "id": "05ed8ecc-b57a-42fb-8bac-00cc94dc101d"
+            },
+            {
+                "parameters": {
+                    "url": "http://content-planner:8000/products",
+                    "method": "GET",
+                    "responseFormat": "json"
+                },
+                "name": "Get Products",
+                "type": "n8n-nodes-base.httpRequest",
+                "position": [
+                    450,
+                    300
+                ],
+                "typeVersion": 1,
+                "id": "5dc59170-6567-4360-83cf-893afb62b0f9"
+            },
+            {
+                "parameters": {
+                    "url": "http://content-planner:8000/scripts/generate-batch",
+                    "method": "POST",
+                    "body": {
+                        "product_id": "={{$json.id}}",
+                        "count": 5
+                    },
+                    "responseFormat": "json"
+                },
+                "name": "Generate Script Variants",
+                "type": "n8n-nodes-base.httpRequest",
+                "position": [
+                    650,
+                    300
+                ],
+                "typeVersion": 1,
+                "id": "42e6467b-dde5-4d62-823b-817518f384c0"
+            },
+            {
+                "parameters": {
+                    "url": "={{$env.KLING_BASE_URL || 'https://api.klingai.com'}}/v1/videos/generations",
+                    "method": "POST",
+                    "headers": {
+                        "Authorization": "Bearer {{$env.KLING_API_KEY}}"
+                    },
+                    "body": {
+                        "prompt": "={{$json.visual_desc}}",
+                        "duration": 5,
+                        "aspect_ratio": "9:16"
+                    },
+                    "responseFormat": "json"
+                },
+                "name": "Generate Video (API)",
+                "type": "n8n-nodes-base.httpRequest",
+                "position": [
+                    850,
+                    300
+                ],
+                "typeVersion": 1,
+                "id": "bda7926d-947c-419d-998b-4d3842352fff"
+            },
+            {
+                "parameters": {
+                    "amount": 30,
+                    "unit": "seconds"
+                },
+                "name": "Wait for Generation",
+                "type": "n8n-nodes-base.wait",
+                "position": [
+                    1050,
+                    300
+                ],
+                "typeVersion": 1,
+                "id": "d06112dc-96df-4ae2-a1a1-7d55f44f1fc0"
+            },
+            {
+                "parameters": {
+                    "url": "http://video-mutator:8000/mutate",
+                    "method": "POST",
+                    "body": {
+                        "minio_key": "={{$json.minio_key}}",
+                        "variant_count": 5,
+                        "intensity": "medium"
+                    },
+                    "responseFormat": "json"
+                },
+                "name": "Create Variants",
+                "type": "n8n-nodes-base.httpRequest",
+                "position": [
+                    1250,
+                    300
+                ],
+                "typeVersion": 1,
+                "id": "88c1101c-998d-40ed-b00b-107e111d178a"
+            },
+            {
+                "parameters": {
+                    "url": "http://video-mutator:8000/hash",
+                    "method": "POST",
+                    "body": {
+                        "minio_key": "={{$json.minio_key}}",
+                        "existing_hashes": "={{$json.existing_hashes || []}}",
+                        "threshold": 0.7
+                    },
+                    "responseFormat": "json"
+                },
+                "name": "Check Similarity",
+                "type": "n8n-nodes-base.httpRequest",
+                "position": [
+                    1450,
+                    300
+                ],
+                "typeVersion": 1,
+                "id": "c8273cf7-c5af-485d-a1f8-cae24d5841ba"
+            },
+            {
+                "parameters": {
+                    "conditions": {
+                        "boolean": [
+                            {
+                                "value1": "={{$json.is_unique}}",
+                                "value2": true
+                            }
+                        ]
+                    }
+                },
+                "name": "Is Unique?",
+                "type": "n8n-nodes-base.if",
+                "position": [
+                    1650,
+                    300
+                ],
+                "typeVersion": 1,
+                "id": "1f674b8f-0980-4210-9c03-c0d4934bb701"
+            },
+            {
+                "parameters": {
+                    "url": "http://content-router:8000/route",
+                    "method": "POST",
+                    "body": {
+                        "video_id": "={{$json.video_id}}",
+                        "video_hash": "={{$json.hash}}",
+                        "target_platforms": [
+                            "douyin"
+                        ]
+                    },
+                    "responseFormat": "json"
+                },
+                "name": "Route to Accounts",
+                "type": "n8n-nodes-base.httpRequest",
+                "position": [
+                    1850,
+                    200
+                ],
+                "typeVersion": 1,
+                "id": "f8a8e809-4001-4f4a-8786-ae87035faf82"
+            },
+            {
+                "parameters": {
+                    "url": "http://video-mutator:8000/mutate",
+                    "method": "POST",
+                    "body": {
+                        "minio_key": "={{$json.minio_key}}",
+                        "variant_count": 1,
+                        "intensity": "high"
+                    },
+                    "responseFormat": "json"
+                },
+                "name": "Re-Mutate (Too Similar)",
+                "type": "n8n-nodes-base.httpRequest",
+                "position": [
+                    1850,
+                    400
+                ],
+                "typeVersion": 1,
+                "id": "c5891b7f-0f55-4eb2-996b-b391957089c1"
             }
-          ]
+        ],
+        "connections": {
+            "Schedule Trigger": {
+                "main": [
+                    [
+                        {
+                            "node": "Get Products",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Get Products": {
+                "main": [
+                    [
+                        {
+                            "node": "Generate Script Variants",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Generate Script Variants": {
+                "main": [
+                    [
+                        {
+                            "node": "Generate Video (API)",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Generate Video (API)": {
+                "main": [
+                    [
+                        {
+                            "node": "Wait for Generation",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Wait for Generation": {
+                "main": [
+                    [
+                        {
+                            "node": "Create Variants",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Create Variants": {
+                "main": [
+                    [
+                        {
+                            "node": "Check Similarity",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Check Similarity": {
+                "main": [
+                    [
+                        {
+                            "node": "Is Unique?",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Is Unique?": {
+                "main": [
+                    [
+                        {
+                            "node": "Route to Accounts",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ],
+                    [
+                        {
+                            "node": "Re-Mutate (Too Similar)",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            },
+            "Re-Mutate (Too Similar)": {
+                "main": [
+                    [
+                        {
+                            "node": "Check Similarity",
+                            "type": "main",
+                            "index": 0
+                        }
+                    ]
+                ]
+            }
+        },
+        "settings": {
+            "saveManualExecutions": true,
+            "callerPolicy": "workflowsFromSameOwner"
+        },
+        "staticData": null,
+        "meta": null,
+        "pinData": null,
+        "versionId": "767acbbd-a9d1-4c22-a648-8f66fd53a8b5",
+        "activeVersionId": null,
+        "versionCounter": 1,
+        "triggerCount": 0,
+        "tags": [],
+        "shared": [
+            {
+                "updatedAt": "2026-03-31T06:38:55.562Z",
+                "createdAt": "2026-03-31T06:38:55.562Z",
+                "role": "workflow:owner",
+                "workflowId": "a17d4cf2-73e9-478f-8ee5-c8e61da35eef",
+                "projectId": "xBzLfR3sWiyOx0qR",
+                "project": {
+                    "updatedAt": "2026-03-31T06:28:48.361Z",
+                    "createdAt": "2026-03-31T05:13:30.880Z",
+                    "id": "xBzLfR3sWiyOx0qR",
+                    "name": "PENG YU <yp13775738821@gmail.com>",
+                    "type": "personal",
+                    "icon": null,
+                    "description": null,
+                    "creatorId": "1913e801-a101-4503-87a4-b879623407f5"
+                }
+            }
+        ],
+        "versionMetadata": {
+            "name": null,
+            "description": null
         }
-      },
-      "name": "Is Unique?",
-      "type": "n8n-nodes-base.if",
-      "position": [1650, 300],
-      "typeVersion": 1
-    },
-    {
-      "parameters": {
-        "url": "http://content-router:8000/route",
-        "method": "POST",
-        "body": {
-          "video_id": "={{$json.video_id}}",
-          "video_hash": "={{$json.hash}}",
-          "target_platforms": ["douyin"]
-        },
-        "responseFormat": "json"
-      },
-      "name": "Route to Accounts",
-      "type": "n8n-nodes-base.httpRequest",
-      "position": [1850, 200],
-      "typeVersion": 1
-    },
-    {
-      "parameters": {
-        "url": "http://video-mutator:8000/mutate",
-        "method": "POST",
-        "body": {
-          "minio_key": "={{$json.minio_key}}",
-          "variant_count": 1,
-          "intensity": "high"
-        },
-        "responseFormat": "json"
-      },
-      "name": "Re-Mutate (Too Similar)",
-      "type": "n8n-nodes-base.httpRequest",
-      "position": [1850, 400],
-      "typeVersion": 1
     }
-  ],
-  "connections": {
-    "Schedule Trigger": {
-      "main": [
-        [{"node": "Get Products", "type": "main", "index": 0}]
-      ]
-    },
-    "Get Products": {
-      "main": [
-        [{"node": "Generate Script Variants", "type": "main", "index": 0}]
-      ]
-    },
-    "Generate Script Variants": {
-      "main": [
-        [{"node": "Generate Video (API)", "type": "main", "index": 0}]
-      ]
-    },
-    "Generate Video (API)": {
-      "main": [
-        [{"node": "Wait for Generation", "type": "main", "index": 0}]
-      ]
-    },
-    "Wait for Generation": {
-      "main": [
-        [{"node": "Create Variants", "type": "main", "index": 0}]
-      ]
-    },
-    "Create Variants": {
-      "main": [
-        [{"node": "Check Similarity", "type": "main", "index": 0}]
-      ]
-    },
-    "Check Similarity": {
-      "main": [
-        [{"node": "Is Unique?", "type": "main", "index": 0}]
-      ]
-    },
-    "Is Unique?": {
-      "main": [
-        [{"node": "Route to Accounts", "type": "main", "index": 0}],
-        [{"node": "Re-Mutate (Too Similar)", "type": "main", "index": 0}]
-      ]
-    },
-    "Re-Mutate (Too Similar)": {
-      "main": [
-        [{"node": "Check Similarity", "type": "main", "index": 0}]
-      ]
-    }
-  },
-  "settings": {
-    "saveManualExecutions": true,
-    "callerPolicy": "workflowsFromSameOwner"
-  }
-}
+]
